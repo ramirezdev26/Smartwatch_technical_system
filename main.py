@@ -1,11 +1,12 @@
 """
-Demo completa del sistema para presentación midterm
-Integra pipeline de ingesta + búsqueda semántica
+Pipeline principal CON integración Chroma
+Modifica tu main.py actual para incluir almacenamiento persistente
 """
 import sys
 from pathlib import Path
-import time
+import pandas as pd
 from loguru import logger
+import time
 
 # Añadir src al path
 sys.path.append(str(Path(__file__).parent / "src"))
@@ -13,66 +14,110 @@ sys.path.append(str(Path(__file__).parent / "src"))
 from config import *
 from src.ingestion.document_processor import DocumentProcessor
 from src.ingestion.embedding_generator import EmbeddingGenerator
-from src.search.semantic_search import SmartWatchSemanticSearch
+from src.storage.chroma_manager import ChromaManager
 
-def setup_demo_logging():
-    """Configura logging para la demo"""
+
+def setup_logging():
+    """Configura el sistema de logging"""
     logger.remove()
     logger.add(
         sys.stdout,
-        level="INFO",
-        format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>"
+        level=LOG_LEVEL,
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
     )
 
-def run_complete_demo():
-    """Demo completa del sistema para midterm"""
+    LOG_FILE.parent.mkdir(exist_ok=True)
+    logger.add(LOG_FILE, level=LOG_LEVEL, rotation="10 MB")
 
-    logger.info("🎭 DEMO COMPLETA - SISTEMA INTELIGENTE DE GESTIÓN DE CONOCIMIENTO")
-    logger.info("🎯 Para Presentación Midterm CSDS-352")
-    logger.info("=" * 80)
 
-    total_demo_start = time.time()
+def test_chroma_pipeline():
+    """
+    Pipeline completo CON almacenamiento en Chroma
+    FASE 1: Integración con base de datos vectorial
+    """
+    logger.info("🚀 === SMARTWATCH KNOWLEDGE SYSTEM CON CHROMA ===")
+    logger.info("📋 FASE 1: Pipeline de Ingesta + Almacenamiento Vectorial")
+    logger.info("=" * 70)
 
-    # PARTE 1: PIPELINE DE INGESTA
-    logger.info("\n📥 PARTE 1: PIPELINE DE INGESTA AUTOMÁTICA")
-    logger.info("-" * 50)
+    total_start = time.time()
+
+    # PASO 1: Verificar conexión con Chroma
+    logger.info("\n🔌 PASO 1: Conexión con Chroma DB")
+    logger.info("-" * 40)
+
+    try:
+        chroma_manager = ChromaManager()
+
+        # Verificar estado actual
+        stats = chroma_manager.get_collection_stats()
+        logger.info(f"📊 Estado actual de Chroma:")
+        logger.info(f"   📚 Documentos existentes: {stats.get('total_documents', 0)}")
+
+        # Preguntar si limpiar datos existentes
+        if stats.get('total_documents', 0) > 0:
+            logger.info("⚠️ Ya hay datos en Chroma. Para esta demo, limpiaremos la colección.")
+            chroma_manager.clear_collection()
+            logger.info("🗑️ Colección limpiada para demo fresca")
+
+    except Exception as e:
+        logger.error(f"❌ Error conectando con Chroma: {e}")
+        logger.error("💡 Asegúrate de que Docker esté corriendo:")
+        logger.error("   docker run -v ./chroma-data:/data -p 8000:8000 chromadb/chroma")
+        return None
+
+    # PASO 2: Pipeline de ingesta (tu código actual)
+    logger.info("\n📥 PASO 2: Pipeline de Ingesta de Documentos")
+    logger.info("-" * 40)
 
     # Inicializar componentes
-    logger.info("🔧 Inicializando pipeline de ingesta...")
     processor = DocumentProcessor(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
     embedding_generator = EmbeddingGenerator(EMBEDDING_MODEL_NAME)
 
     # Mostrar configuración
     model_info = embedding_generator.get_model_info()
-    logger.info(f"⚙️ Modelo: {model_info['model_name']} ({model_info['embedding_dimension']}D)")
+    logger.info(f"⚙️ Configuración:")
+    logger.info(f"   🧠 Modelo: {model_info['model_name']}")
+    logger.info(f"   📐 Embedding dimension: {model_info['embedding_dimension']}D")
+    logger.info(f"   📏 Chunk size: {CHUNK_SIZE} palabras")
+    logger.info(f"   🔗 Overlap: {CHUNK_OVERLAP} palabras")
 
     # Buscar documentos
     documents_found = []
     for brand_dir in RAW_DATA_DIR.iterdir():
         if brand_dir.is_dir():
-            for file_path in brand_dir.glob("*.pdf"):
-                documents_found.append(file_path)
+            for file_path in brand_dir.glob("*"):
+                if file_path.suffix in SUPPORTED_EXTENSIONS:
+                    documents_found.append(file_path)
 
     logger.info(f"📄 Documentos encontrados: {len(documents_found)}")
 
+    if not documents_found:
+        logger.warning("❌ No se encontraron documentos para procesar")
+        return None
+
     # Procesar documentos
-    all_processed_docs = []
     ingestion_start = time.time()
+    all_processed_docs = []
 
     for i, doc_path in enumerate(documents_found, 1):
-        logger.info(f"\n🔄 Procesando {i}/{len(documents_found)}: {doc_path.name}")
+        logger.info(f"\n📄 Procesando {i}/{len(documents_found)}: {doc_path.name}")
 
-        # Procesar PDF
-        result = processor.process_pdf(doc_path)
+        # Procesar según tipo
+        if doc_path.suffix == ".pdf":
+            result = processor.process_pdf(doc_path)
+        else:
+            result = processor.process_text_file(doc_path)
 
         if result:
             # Generar embeddings
+            logger.info("🧠 Generando embeddings...")
             enhanced_chunks = embedding_generator.generate_embeddings(result["chunks"])
+
             result["chunks"] = enhanced_chunks
             all_processed_docs.append(result)
 
-            brand = result["metadata"].get("brand", "unknown")
             chunk_count = len(enhanced_chunks)
+            brand = result["metadata"].get("brand", "unknown")
             logger.info(f"✅ {brand.upper()}: {chunk_count} chunks procesados")
 
     ingestion_time = time.time() - ingestion_start
@@ -81,201 +126,184 @@ def run_complete_demo():
     logger.info(f"\n📊 RESUMEN DE INGESTA:")
     logger.info(f"   ✅ Documentos procesados: {len(all_processed_docs)}")
     logger.info(f"   📦 Total chunks: {total_chunks}")
-    logger.info(f"   ⏱️ Tiempo total: {ingestion_time:.1f} segundos")
+    logger.info(f"   ⏱️ Tiempo de procesamiento: {ingestion_time:.1f} segundos")
     logger.info(f"   ⚡ Velocidad: {total_chunks/ingestion_time:.1f} chunks/segundo")
 
-    # PARTE 2: BÚSQUEDA SEMÁNTICA
-    logger.info(f"\n🔍 PARTE 2: SISTEMA DE BÚSQUEDA SEMÁNTICA")
-    logger.info("-" * 50)
+    # PASO 3: Almacenamiento en Chroma (NUEVO!)
+    logger.info(f"\n💾 PASO 3: Almacenamiento en Chroma DB")
+    logger.info("-" * 40)
 
-    # Inicializar sistema de búsqueda
-    search_system = SmartWatchSemanticSearch()
-    search_system.load_processed_documents(all_processed_docs)
+    storage_start = time.time()
 
-    # Queries de demostración para la presentación
-    demo_queries = [
+    try:
+        storage_stats = chroma_manager.store_documents(all_processed_docs)
+        storage_time = time.time() - storage_start
+
+        logger.info(f"📊 RESUMEN DE ALMACENAMIENTO:")
+        logger.info(f"   💾 Chunks almacenados: {storage_stats['chunks_stored']}")
+        logger.info(f"   📚 Total en Chroma: {storage_stats['total_in_collection']}")
+        logger.info(f"   ⏱️ Tiempo almacenamiento: {storage_time:.1f} segundos")
+        logger.info(f"   🚀 Velocidad almacenamiento: {storage_stats['storage_rate']:.1f} chunks/segundo")
+
+    except Exception as e:
+        logger.error(f"❌ Error almacenando en Chroma: {e}")
+        return None
+
+    # PASO 4: Verificación y pruebas de búsqueda
+    logger.info(f"\n🔍 PASO 4: Verificación con Búsquedas de Prueba")
+    logger.info("-" * 40)
+
+    # Queries de prueba para verificar que funciona
+    test_queries = [
         {
-            "query": "My Apple Watch battery drains too fast",
-            "description": "💡 Problema común: Batería se agota rápido",
-            "expected": "Apple Watch"
+            "query": "Apple Watch battery drain",
+            "expected_brand": "apple",
+            "description": "Problema de batería Apple"
         },
         {
-            "query": "How to track sleep with Fitbit",
-            "description": "😴 Seguimiento de sueño",
-            "expected": "Fitbit"
+            "query": "Samsung charging issues",
+            "expected_brand": "samsung",
+            "description": "Problemas de carga Samsung"
         },
         {
-            "query": "Samsung watch not charging properly",
-            "description": "🔋 Problemas de carga",
-            "expected": "Samsung"
-        },
-        {
-            "query": "Garmin GPS not accurate during running",
-            "description": "🏃 Precisión GPS para deportes",
-            "expected": "Garmin"
+            "query": "Fitbit sleep tracking",
+            "expected_brand": "fitbit",
+            "description": "Seguimiento de sueño Fitbit"
         }
     ]
 
-    logger.info("🎯 Demostrando consultas típicas de soporte técnico:")
+    search_results_summary = []
 
-    search_start = time.time()
-    all_search_results = []
+    for i, test in enumerate(test_queries, 1):
+        logger.info(f"\n🧪 Prueba {i}: {test['description']}")
+        logger.info(f"   Query: '{test['query']}'")
 
-    for i, demo in enumerate(demo_queries, 1):
-        logger.info(f"\n--- Query {i}: {demo['description']} ---")
-        logger.info(f"❓ Usuario pregunta: '{demo['query']}'")
-
-        # Realizar búsqueda
-        query_start = time.time()
-        results = search_system.search(demo['query'], top_k=3)
-        query_time = time.time() - query_start
+        search_start = time.time()
+        results = chroma_manager.search(test["query"], top_k=3)
+        search_time = time.time() - search_start
 
         if results:
-            logger.info(f"⚡ Encontrado en {query_time:.3f} segundos:")
+            top_result = results[0]
+            top_brand = top_result["metadata"].get("brand", "unknown")
+            score = top_result["similarity_score"]
 
-            for j, result in enumerate(results[:2], 1):  # Solo top 2 para la demo
-                score = result['similarity_score']
-                brand = result.get('brand', 'unknown')
-                text_preview = result['text'][:120] + "..."
-
-                logger.info(f"  {j}. [{brand.upper()}] Relevancia: {score:.3f}")
-                logger.info(f"     📝 {text_preview}")
+            logger.info(f"   ⚡ Búsqueda en {search_time:.3f} segundos")
+            logger.info(f"   🎯 Top resultado: {top_brand.upper()} (score: {score:.3f})")
+            logger.info(f"   📝 Preview: {top_result['text'][:100]}...")
 
             # Verificar si encontró la marca esperada
-            top_brand = results[0].get('brand', '').lower()
-            expected_brand = demo['expected'].lower()
-            if expected_brand in top_brand:
-                logger.info(f"  ✅ Resultado correcto: {demo['expected']} encontrado")
+            if test["expected_brand"] in top_brand:
+                logger.info(f"   ✅ Resultado CORRECTO")
+                search_results_summary.append("✅")
             else:
-                logger.info(f"  ⚠️ Resultado inesperado (esperaba {demo['expected']})")
-
-            all_search_results.extend(results)
+                logger.info(f"   ⚠️ Resultado inesperado (esperaba {test['expected_brand']})")
+                search_results_summary.append("⚠️")
         else:
-            logger.warning("  ❌ No se encontraron resultados")
-
-        # Pausa dramática para la demo
-        time.sleep(1)
-
-    search_time = time.time() - search_start
-    avg_query_time = search_time / len(demo_queries)
-
-    # PARTE 3: MÉTRICAS Y ESTADÍSTICAS
-    logger.info(f"\n📊 PARTE 3: MÉTRICAS DEL SISTEMA")
-    logger.info("-" * 50)
-
-    stats = search_system.get_search_statistics()
-
-    logger.info("🎯 MÉTRICAS CLAVE PARA MIDTERM:")
-    logger.info(f"   📚 Base de conocimiento: {stats['total_chunks']} chunks")
-    logger.info(f"   🏷️ Marcas cubiertas: {', '.join(stats['brands_covered'])}")
-    logger.info(f"   🧠 Dimensión embeddings: {stats['embedding_dimension']}D")
-    logger.info(f"   ⚡ Tiempo promedio por query: {avg_query_time:.3f} segundos")
-    logger.info(f"   🚀 Velocidad de ingesta: {total_chunks/ingestion_time:.1f} chunks/seg")
-
-    logger.info(f"\n📈 DISTRIBUCIÓN POR MARCA:")
-    for brand, count in stats['chunks_per_brand'].items():
-        percentage = (count / stats['total_chunks']) * 100
-        logger.info(f"   {brand.upper()}: {count} chunks ({percentage:.1f}%)")
-
-    # PARTE 4: COMPARACIÓN CON MÉTODO MANUAL
-    logger.info(f"\n⚖️ PARTE 4: COMPARACIÓN CON MÉTODO TRADICIONAL")
-    logger.info("-" * 50)
-
-    manual_time_per_query = 15 * 60  # 15 minutos promedio
-    total_manual_time = manual_time_per_query * len(demo_queries)
-    total_auto_time = search_time
-
-    time_savings = ((total_manual_time - total_auto_time) / total_manual_time) * 100
-
-    logger.info("📊 IMPACTO EN EFICIENCIA:")
-    logger.info(f"   🐌 Método manual: {total_manual_time/60:.1f} minutos")
-    logger.info(f"   🚀 Nuestro sistema: {total_auto_time:.1f} segundos")
-    logger.info(f"   💰 Ahorro de tiempo: {time_savings:.1f}%")
-    logger.info(f"   🎯 Factor de mejora: {total_manual_time/total_auto_time:.0f}x más rápido")
+            logger.info(f"   ❌ No se encontraron resultados")
+            search_results_summary.append("❌")
 
     # RESUMEN FINAL
-    total_demo_time = time.time() - total_demo_start
+    total_time = time.time() - total_start
 
-    logger.info(f"\n🎉 DEMO COMPLETADA EXITOSAMENTE")
-    logger.info("=" * 80)
-    logger.info(f"⏱️ Tiempo total de demo: {total_demo_time:.1f} segundos")
-    logger.info(f"✅ Sistema completamente funcional")
-    logger.info(f"📈 Listo para presentación midterm")
+    logger.info(f"\n🎉 === PIPELINE COMPLETADO EXITOSAMENTE ===")
+    logger.info("=" * 70)
+    logger.info(f"⏱️ TIEMPO TOTAL: {total_time:.1f} segundos")
+    logger.info(f"📊 RESULTADOS:")
+    logger.info(f"   📄 Documentos procesados: {len(all_processed_docs)}")
+    logger.info(f"   📦 Chunks con embeddings: {total_chunks}")
+    logger.info(f"   💾 Almacenados en Chroma: {storage_stats['chunks_stored']}")
+    logger.info(f"   🔍 Búsquedas de prueba: {'/'.join(search_results_summary)}")
 
-    # Mensaje final para la presentación
-    logger.info(f"\n🎤 PUNTOS CLAVE PARA LA PRESENTACIÓN:")
-    logger.info("   1. ✅ Pipeline de ingesta automática funcionando")
-    logger.info("   2. ✅ Búsqueda semántica en <1 segundo")
-    logger.info("   3. ✅ Cobertura completa de marcas principales")
-    logger.info("   4. ✅ Escalabilidad demostrada (1,400+ chunks)")
-    logger.info("   5. ✅ ROI comprobado (99%+ ahorro de tiempo)")
+    logger.info(f"\n🎯 FASE 1 COMPLETADA:")
+    logger.info("   ✅ Pipeline de ingesta funcionando")
+    logger.info("   ✅ Integración con Chroma DB exitosa")
+    logger.info("   ✅ Almacenamiento vectorial persistente")
+    logger.info("   ✅ Búsqueda semántica básica operativa")
+
+    logger.info(f"\n📋 SIGUIENTE: FASE 2")
+    logger.info("   🎯 Clasificador de relevancia (Logistic Regression)")
+    logger.info("   🚨 Detección de anomalías (Isolation Forest)")
+    logger.info("   🔍 Sistema de búsqueda semántica avanzado")
 
     return {
         "processed_docs": all_processed_docs,
-        "search_system": search_system,
-        "demo_results": all_search_results,
-        "metrics": stats
+        "chroma_manager": chroma_manager,
+        "storage_stats": storage_stats,
+        "total_time": total_time
     }
 
-def quick_search_demo(search_system):
-    """Demo rápida de búsqueda interactiva"""
-    logger.info(f"\n🔍 DEMO INTERACTIVA DE BÚSQUEDA")
-    logger.info("Escribe 'quit' para salir")
+
+def demo_search_interface(chroma_manager: ChromaManager):
+    """
+    Demo interactiva de búsqueda una vez que los datos están en Chroma
+    """
+    logger.info(f"\n🎭 === DEMO INTERACTIVA DE BÚSQUEDA ===")
+    logger.info("🔍 Prueba búsquedas en tu base de conocimiento")
+    logger.info("💡 Escribe 'quit' para salir")
+    logger.info("-" * 50)
 
     while True:
         try:
-            query = input("\n❓ Escribe tu consulta: ").strip()
+            query = input("\n❓ Tu consulta: ").strip()
 
-            if query.lower() in ['quit', 'exit', 'salir']:
-                logger.info("👋 ¡Gracias por probar el sistema!")
+            if query.lower() in ['quit', 'exit', 'salir', 'q']:
+                logger.info("👋 ¡Demo terminada!")
                 break
 
             if not query:
                 continue
 
+            # Realizar búsqueda
             start_time = time.time()
-            results = search_system.search(query, top_k=3)
+            results = chroma_manager.search(query, top_k=3)
             search_time = time.time() - start_time
 
-            logger.info(f"⚡ Búsqueda completada en {search_time:.3f} segundos")
-
             if results:
+                logger.info(f"⚡ Encontrado en {search_time:.3f} segundos:")
+
                 for i, result in enumerate(results, 1):
-                    score = result['similarity_score']
-                    brand = result.get('brand', 'unknown')
-                    text = result['text'][:150] + "..."
+                    score = result["similarity_score"]
+                    brand = result["metadata"].get("brand", "unknown")
+                    doc_name = result["metadata"].get("document_name", "unknown")
+                    text_preview = result["text"][:150] + "..."
 
                     print(f"\n{i}. [{brand.upper()}] Score: {score:.3f}")
-                    print(f"   {text}")
+                    print(f"   📄 Fuente: {doc_name}")
+                    print(f"   📝 {text_preview}")
             else:
                 print("❌ No se encontraron resultados relevantes")
 
         except KeyboardInterrupt:
-            logger.info("\n👋 Demo interrumpida por el usuario")
+            logger.info("\n👋 Demo interrumpida")
             break
         except Exception as e:
             logger.error(f"Error en búsqueda: {e}")
 
+
 def main():
-    """Función principal de la demo"""
-    setup_demo_logging()
+    """Función principal del pipeline con Chroma"""
+    setup_logging()
 
     try:
-        # Ejecutar demo completa
-        demo_results = run_complete_demo()
+        # Ejecutar pipeline completo
+        results = test_chroma_pipeline()
 
-        # Ofrecer demo interactiva
-        response = input("\n🤔 ¿Quieres probar búsquedas interactivas? (y/n): ").strip().lower()
-        if response in ['y', 'yes', 's', 'si']:
-            quick_search_demo(demo_results["search_system"])
+        if results:
+            # Ofrecer demo interactiva
+            response = input("\n🤔 ¿Quieres probar la búsqueda interactiva? (y/n): ").strip().lower()
+            if response in ['y', 'yes', 's', 'si']:
+                demo_search_interface(results["chroma_manager"])
 
-        logger.info("🎯 Demo lista para presentación midterm!")
+            logger.info("🎯 Pipeline con Chroma completado exitosamente!")
+        else:
+            logger.error("❌ Pipeline falló")
 
-    except KeyboardInterrupt:
-        logger.info("Demo interrumpida por el usuario")
     except Exception as e:
-        logger.error(f"Error en demo: {e}")
+        logger.error(f"💥 Error crítico: {e}")
         raise
+
 
 if __name__ == "__main__":
     main()
+
+
