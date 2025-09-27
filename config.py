@@ -18,9 +18,8 @@ MAX_SEQUENCE_LENGTH = 256  # Máximo del modelo
 # ⚠️ CONFIGURACIÓN CORREGIDA PARA CHUNKS
 # Calcular chunk size basado en tokens, no palabras
 # Relación aproximada: 1 token ≈ 0.75 palabras en español
-CHUNK_SIZE_TOKENS = 200  # Dejar margen para el modelo (256 max)
-CHUNK_SIZE_WORDS = int(CHUNK_SIZE_TOKENS * 0.75)  # ~150 palabras
-CHUNK_OVERLAP_WORDS = 20  # Overlap más pequeño
+CHUNK_SIZE = 150  # ⚡ ESTO RESUELVE EL PROBLEMA PRINCIPAL
+CHUNK_OVERLAP = 20
 
 # Configuración de la base de datos vectorial
 CHROMA_DB_PATH = str(DATA_DIR / "chroma_db")
