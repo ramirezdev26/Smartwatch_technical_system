@@ -59,7 +59,7 @@ def test_pipeline():
     # Procesar cada documento
     all_processed_docs = []
 
-    for doc_path in documents_found[:2]:  # Procesar solo 2 docs para prueba
+    for doc_path in documents_found:  # Procesar solo 2 docs para prueba
         logger.info(f"Procesando: {doc_path}")
 
         # Procesar según el tipo de archivo

@@ -38,10 +38,10 @@ class DocumentProcessor:
                     text_content += page.extract_text() + "\\n"
 
                 # Limpiar texto
-                cleaned_text = self._clean_text(text_content)
+                # cleaned_text = self._clean_text(text_content)
 
                 # Crear chunks
-                chunks = self._create_chunks(cleaned_text)
+                chunks = self._create_chunks(text_content)
 
                 # Generar metadatos
                 metadata = self._generate_metadata(file_path, len(pdf_reader.pages), len(chunks))
@@ -49,7 +49,7 @@ class DocumentProcessor:
                 return {
                     "metadata": metadata,
                     "chunks": chunks,
-                    "full_text": cleaned_text
+                    # "full_text": cleaned_text
                 }
 
         except Exception as e:
@@ -71,10 +71,10 @@ class DocumentProcessor:
                 text_content = file.read()
 
             # Limpiar texto
-            cleaned_text = self._clean_text(text_content)
+            # cleaned_text = self._clean_text(text_content)
 
             # Crear chunks
-            chunks = self._create_chunks(cleaned_text)
+            chunks = self._create_chunks(text_content)
 
             # Generar metadatos
             metadata = self._generate_metadata(file_path, None, len(chunks))
@@ -82,7 +82,7 @@ class DocumentProcessor:
             return {
                 "metadata": metadata,
                 "chunks": chunks,
-                "full_text": cleaned_text
+                # "full_text": cleaned_text
             }
 
         except Exception as e:
@@ -92,11 +92,11 @@ class DocumentProcessor:
     def _clean_text(self, text: str) -> str:
         """Limpia y normaliza el texto"""
         # Remover caracteres especiales excesivos
-        text = re.sub(r'\\s+', ' ', text)  # Múltiples espacios en blanco
-        text = re.sub(r'\\n+', '\\n', text)  # Múltiples saltos de línea
+        # text = re.sub(r'\\s+', ' ', text)  # Múltiples espacios en blanco
+        # text = re.sub(r'\\n+', '\\n', text)  # Múltiples saltos de línea
 
         # Remover caracteres no imprimibles
-        text = re.sub(r'[^\\x20-\\x7E\\n]', '', text)
+        # text = re.sub(r'[^\\x20-\\x7E\\n]', '', text)
 
         return text.strip()
 
