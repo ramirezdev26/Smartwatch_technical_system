@@ -5,6 +5,8 @@ import PyPDF2
 import re
 from pathlib import Path
 from typing import List, Dict, Any
+
+import pandas as pd
 from loguru import logger
 import hashlib
 
