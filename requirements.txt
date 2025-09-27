@@ -1,0 +1,21 @@
+# Core dependencies - Versiones compatibles con Python 3.12
+sentence-transformers>=2.3.0
+chromadb>=0.4.22
+PyPDF2>=3.0.1
+
+# Machine Learning
+scikit-learn>=1.4.0
+numpy>=1.26.0
+pandas>=2.1.0
+
+# Visualization and UI
+streamlit>=1.29.0
+plotly>=5.18.0
+matplotlib>=3.8.0
+
+# Utilities
+loguru>=0.7.2
+tqdm>=4.66.1
+
+# Fix para Python 3.12
+setuptools>=69.0.0
