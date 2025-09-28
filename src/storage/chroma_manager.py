@@ -168,6 +168,8 @@ class ChromaManager:
             batch_metadatas = all_metadatas[i:batch_end]
 
             try:
+                if self.collection is None:
+                    raise RuntimeError("Collection not initialized")
                 self.collection.add(
                     ids=batch_ids,
                     embeddings=batch_embeddings,
@@ -187,6 +189,8 @@ class ChromaManager:
         storage_time = time.time() - start_time
 
         # Verificar almacenamiento
+        if self.collection is None:
+            raise RuntimeError("Collection not initialized")
         final_count = self.collection.count()
 
         logger.info(f"✅ Almacenamiento completado:")
@@ -446,7 +450,12 @@ class ChromaManager:
     def health_check(self) -> bool:
         """Verifica que Chroma DB esté funcionando correctamente"""
         try:
+            if self.client is None:
+                raise RuntimeError("Client not initialized")
             heartbeat = self.client.heartbeat()
+
+            if self.collection is None:
+                raise RuntimeError("Collection not initialized")
             collection_count = self.collection.count()
 
             logger.info(f"💚 Health Check OK:")

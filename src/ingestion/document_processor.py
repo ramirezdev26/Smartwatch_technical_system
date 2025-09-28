@@ -113,7 +113,7 @@ class DocumentProcessor:
         Returns:
             Lista de chunks con metadatos
         """
-        chunks = []
+        chunks: List[Dict[str, Any]] = []
         words = text.split()
 
         for i in range(0, len(words), self.chunk_size - self.chunk_overlap):

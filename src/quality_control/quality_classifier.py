@@ -39,7 +39,7 @@ class SimpleQualityClassifier:
         self.label_to_number = {"irrelevante": 0, "ambiguo": 1, "relevante": 2}
         self.number_to_label = {0: "irrelevante", 1: "ambiguo", 2: "relevante"}
 
-        self.training_info = {}
+        self.training_info: Dict[str, Any] = {}
 
         # Cargar modelo si existe
         if model_path and model_path.exists():
@@ -187,8 +187,6 @@ class SimpleQualityClassifier:
         # Mostrar resultados finales
         logger.info(f"\n✅ ENTRENAMIENTO COMPLETADO:")
         logger.info(f"   📊 Accuracy: {test_accuracy:.3f} ({test_accuracy*100:.1f}%)")
-        logger.info(f"   📈 Precisión promedio: {report['macro avg']['precision']:.3f}")
-        logger.info(f"   🎯 Recall promedio: {report['macro avg']['recall']:.3f}")
 
         return self.training_info
 
@@ -223,7 +221,10 @@ class SimpleQualityClassifier:
             )
 
         # Ordenar por importancia
-        importance_list.sort(key=lambda x: x["importance"], reverse=True)
+        def sort_key(item: Dict[str, Any]) -> float:
+            return float(item["importance"])
+
+        importance_list.sort(key=sort_key, reverse=True)
 
         # Agregar ranking
         for i, item in enumerate(importance_list):

@@ -17,6 +17,11 @@ matplotlib>=3.8.0
 # Utilities
 loguru>=0.7.2
 tqdm>=4.66.1
+mypy==1.18.2
+
+# Type stubs for mypy
+types-requests
+scikit-learn-stubs
 
 # Fix para Python 3.12
 setuptools>=69.0.0

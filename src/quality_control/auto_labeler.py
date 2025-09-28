@@ -193,7 +193,7 @@ class SimpleAutoLabeler:
         logger.info("=" * 50)
 
         # Contar por razón
-        reason_counts = {}
+        reason_counts: Dict[str, int] = {}
         for chunk in labeled_chunks:
             reason = chunk["auto_reason"]
             reason_counts[reason] = reason_counts.get(reason, 0) + 1
@@ -233,7 +233,7 @@ class SimpleAutoLabeler:
 
     def get_simple_stats(self, labeled_chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Estadísticas simples del etiquetado"""
-        stats = {
+        stats: Dict[str, Any] = {
             "total_chunks": len(labeled_chunks),
             "by_label": {},
             "high_confidence": 0,
