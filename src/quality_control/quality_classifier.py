@@ -13,8 +13,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
-from feature_extractor import SimpleFeatureExtractor
-from auto_labeler import SimpleAutoLabeler
+from .feature_extractor import SimpleFeatureExtractor
+from .auto_labeler import SimpleAutoLabeler
 
 
 class SimpleQualityClassifier:
@@ -376,112 +376,3 @@ class SimpleQualityClassifier:
             "test_accuracy": self.training_info.get("test_accuracy", 0),
             "total_training_samples": self.training_info.get("total_chunks", 0)
         }
-
-
-def test_simple_classifier():
-    """Test completo del clasificador simple"""
-    logger.info("🧪 PROBANDO CLASIFICADOR SIMPLE COMPLETO...")
-
-    # Crear datos de prueba más variados
-    test_chunks = [
-        # Ejemplos RELEVANTES
-        {
-            "text": "If your Apple Watch battery drains quickly, try these solutions: Check Background App Refresh settings, reduce screen brightness, turn off unnecessary notifications.",
-            "metadata": {"brand": "apple_watch", "chunk_index": 5}
-        },
-        {
-            "text": "To charge your Samsung Galaxy Watch, clean the charging contacts with a dry cloth and place the watch on the charging dock.",
-            "metadata": {"brand": "samsung", "chunk_index": 10}
-        },
-        {
-            "text": "Press the Digital Crown to wake up your Apple Watch. Tap Settings to configure your device preferences.",
-            "metadata": {"brand": "apple_watch", "chunk_index": 8}
-        },
-
-        # Ejemplos IRRELEVANTES
-        {
-            "text": "Page 47",
-            "metadata": {"brand": "samsung", "chunk_index": 1}
-        },
-        {
-            "text": "Copyright 2024 Apple Inc. All rights reserved.",
-            "metadata": {"brand": "apple_watch", "chunk_index": 0}
-        },
-        {
-            "text": "Chapter 5: Advanced Features",
-            "metadata": {"brand": "garmin", "chunk_index": 2}
-        },
-
-        # Ejemplos AMBIGUOS
-        {
-            "text": "See the previous section for battery information.",
-            "metadata": {"brand": "fitbit", "chunk_index": 15}
-        },
-        {
-            "text": "Heart rate, GPS, Sleep tracking available.",
-            "metadata": {"brand": "garmin", "chunk_index": 12}
-        }
-    ]
-
-    # Crear y entrenar clasificador
-    classifier = SimpleQualityClassifier()
-
-    logger.info("\n" + "="*60)
-    training_results = classifier.train(test_chunks)
-
-    # Probar predicciones en datos nuevos
-    logger.info(f"\n🧪 PROBANDO PREDICCIONES EN DATOS NUEVOS:")
-    logger.info("-" * 50)
-
-    new_chunks = [
-        {
-            "text": "Restart your device by pressing and holding the power button for 10 seconds.",
-            "metadata": {"brand": "apple_watch", "chunk_index": 20}
-        },
-        {
-            "text": "Table of Contents",
-            "metadata": {"brand": "fitbit", "chunk_index": 1}
-        }
-    ]
-
-    predictions = classifier.predict(new_chunks, explain=True)
-
-    for i, pred in enumerate(predictions, 1):
-        text_preview = pred["text"][:60] + "..."
-        label = pred["quality_label"]
-        confidence = pred["quality_confidence"]
-
-        emoji = "✅" if label == "relevante" else "❌" if label == "irrelevante" else "⚠️"
-
-        logger.info(f"\n{i}. {emoji} PREDICCIÓN: {label.upper()} (confianza: {confidence:.2f})")
-        logger.info(f"   📝 Texto: {text_preview}")
-        logger.info(f"   🎲 Probabilidades:")
-        for class_name, prob in pred["probabilities"].items():
-            logger.info(f"      {class_name}: {prob:.3f}")
-
-    # Explicar una predicción específica
-    logger.info(f"\n🔍 EXPLICACIÓN DETALLADA DE UNA PREDICCIÓN:")
-    logger.info("-" * 50)
-
-    explanation = classifier.explain_prediction(new_chunks[0])
-
-    logger.info(f"📝 Texto: {explanation['text_preview']}")
-    logger.info(f"🎯 Predicción: {explanation['predicted_label']} (confianza: {explanation['confidence']:.2f})")
-    logger.info(f"📊 Características del texto:")
-
-    for char in explanation["characteristics"][:5]:  # Solo top 5
-        logger.info(f"   • {char['name']}: {char['value']} - {char['explanation']}")
-
-    # Resumen del modelo
-    logger.info(f"\n📈 RESUMEN DEL MODELO:")
-    logger.info("-" * 30)
-    summary = classifier.get_model_summary()
-
-    for key, value in summary.items():
-        logger.info(f"   {key}: {value}")
-
-    return classifier
-
-
-if __name__ == "__main__":
-    test_simple_classifier()

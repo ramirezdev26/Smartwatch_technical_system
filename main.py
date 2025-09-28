@@ -1,6 +1,6 @@
 """
-Pipeline principal CON integración Chroma
-Modifica tu main.py actual para incluir almacenamiento persistente
+Pipeline principal CON integración del clasificador de calidad
+Flujo: data/raw/* (entrenar) → data/new/* (clasificar)
 """
 import sys
 from pathlib import Path
@@ -15,6 +15,7 @@ from config import *
 from src.ingestion.document_processor import DocumentProcessor
 from src.ingestion.embedding_generator import EmbeddingGenerator
 from src.storage.chroma_manager import ChromaManager
+from src.quality_control.quality_classifier import SimpleQualityClassifier
 
 
 def setup_logging():
@@ -30,73 +31,40 @@ def setup_logging():
     logger.add(LOG_FILE, level=LOG_LEVEL, rotation="10 MB")
 
 
-def test_chroma_pipeline():
+def process_documents_from_directory(processor, embedding_generator, base_dir, description):
     """
-    Pipeline completo CON almacenamiento en Chroma
-    FASE 1: Integración con base de datos vectorial
+    Procesa documentos de un directorio específico
+
+    Args:
+        processor: DocumentProcessor instance
+        embedding_generator: EmbeddingGenerator instance
+        base_dir: Path al directorio base (data/raw o data/new)
+        description: Descripción para logging
+
+    Returns:
+        Lista de documentos procesados con chunks y embeddings
     """
-    logger.info("🚀 === SMARTWATCH KNOWLEDGE SYSTEM CON CHROMA ===")
-    logger.info("📋 FASE 1: Pipeline de Ingesta + Almacenamiento Vectorial")
-    logger.info("=" * 70)
-
-    total_start = time.time()
-
-    # PASO 1: Verificar conexión con Chroma
-    logger.info("\n🔌 PASO 1: Conexión con Chroma DB")
-    logger.info("-" * 40)
-
-    try:
-        chroma_manager = ChromaManager()
-
-        # Verificar estado actual
-        stats = chroma_manager.get_collection_stats()
-        logger.info(f"📊 Estado actual de Chroma:")
-        logger.info(f"   📚 Documentos existentes: {stats.get('total_documents', 0)}")
-
-        # Preguntar si limpiar datos existentes
-        if stats.get('total_documents', 0) > 0:
-            logger.info("⚠️ Ya hay datos en Chroma. Para esta demo, limpiaremos la colección.")
-            chroma_manager.clear_collection()
-            logger.info("🗑️ Colección limpiada para demo fresca")
-
-    except Exception as e:
-        logger.error(f"❌ Error conectando con Chroma: {e}")
-        logger.error("💡 Asegúrate de que Docker esté corriendo:")
-        logger.error("   docker run -v ./chroma-data:/data -p 8000:8000 chromadb/chroma")
-        return None
-
-    # PASO 2: Pipeline de ingesta (tu código actual)
-    logger.info("\n📥 PASO 2: Pipeline de Ingesta de Documentos")
-    logger.info("-" * 40)
-
-    # Inicializar componentes
-    processor = DocumentProcessor(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
-    embedding_generator = EmbeddingGenerator(EMBEDDING_MODEL_NAME)
-
-    # Mostrar configuración
-    model_info = embedding_generator.get_model_info()
-    logger.info(f"⚙️ Configuración:")
-    logger.info(f"   🧠 Modelo: {model_info['model_name']}")
-    logger.info(f"   📐 Embedding dimension: {model_info['embedding_dimension']}D")
-    logger.info(f"   📏 Chunk size: {CHUNK_SIZE} palabras")
-    logger.info(f"   🔗 Overlap: {CHUNK_OVERLAP} palabras")
+    logger.info(f"\n📥 PROCESANDO DOCUMENTOS: {description}")
+    logger.info(f"📁 Directorio: {base_dir}")
+    logger.info("-" * 50)
 
     # Buscar documentos
     documents_found = []
-    for brand_dir in RAW_DATA_DIR.iterdir():
-        if brand_dir.is_dir():
-            for file_path in brand_dir.glob("*"):
-                if file_path.suffix in SUPPORTED_EXTENSIONS:
-                    documents_found.append(file_path)
+    if base_dir.exists():
+        for brand_dir in base_dir.iterdir():
+            if brand_dir.is_dir():
+                for file_path in brand_dir.glob("*"):
+                    if file_path.suffix in SUPPORTED_EXTENSIONS:
+                        documents_found.append(file_path)
 
     logger.info(f"📄 Documentos encontrados: {len(documents_found)}")
 
     if not documents_found:
-        logger.warning("❌ No se encontraron documentos para procesar")
-        return None
+        logger.warning(f"❌ No se encontraron documentos en {base_dir}")
+        return []
 
     # Procesar documentos
-    ingestion_start = time.time()
+    processing_start = time.time()
     all_processed_docs = []
 
     for i, doc_path in enumerate(documents_found, 1):
@@ -120,181 +88,317 @@ def test_chroma_pipeline():
             brand = result["metadata"].get("brand", "unknown")
             logger.info(f"✅ {brand.upper()}: {chunk_count} chunks procesados")
 
-    ingestion_time = time.time() - ingestion_start
+    processing_time = time.time() - processing_start
     total_chunks = sum(len(doc["chunks"]) for doc in all_processed_docs)
 
-    logger.info(f"\n📊 RESUMEN DE INGESTA:")
+    logger.info(f"\n📊 RESUMEN {description}:")
     logger.info(f"   ✅ Documentos procesados: {len(all_processed_docs)}")
     logger.info(f"   📦 Total chunks: {total_chunks}")
-    logger.info(f"   ⏱️ Tiempo de procesamiento: {ingestion_time:.1f} segundos")
-    logger.info(f"   ⚡ Velocidad: {total_chunks/ingestion_time:.1f} chunks/segundo")
+    logger.info(f"   ⏱️ Tiempo: {processing_time:.1f} segundos")
 
-    # PASO 3: Almacenamiento en Chroma (NUEVO!)
-    logger.info(f"\n💾 PASO 3: Almacenamiento en Chroma DB")
-    logger.info("-" * 40)
+    return all_processed_docs
 
-    storage_start = time.time()
 
-    try:
-        storage_stats = chroma_manager.store_documents(all_processed_docs)
-        storage_time = time.time() - storage_start
+def train_quality_classifier(processed_docs):
+    """
+    Entrena el clasificador de calidad con los documentos procesados
 
-        logger.info(f"📊 RESUMEN DE ALMACENAMIENTO:")
-        logger.info(f"   💾 Chunks almacenados: {storage_stats['chunks_stored']}")
-        logger.info(f"   📚 Total en Chroma: {storage_stats['total_in_collection']}")
-        logger.info(f"   ⏱️ Tiempo almacenamiento: {storage_time:.1f} segundos")
-        logger.info(f"   🚀 Velocidad almacenamiento: {storage_stats['storage_rate']:.1f} chunks/segundo")
+    Args:
+        processed_docs: Lista de documentos con chunks y embeddings
 
-    except Exception as e:
-        logger.error(f"❌ Error almacenando en Chroma: {e}")
+    Returns:
+        Clasificador entrenado o None si falla
+    """
+    logger.info(f"\n🎓 === ENTRENAMIENTO DEL CLASIFICADOR ===")
+    logger.info("-" * 50)
+
+    # Preparar datos de entrenamiento (todos los chunks)
+    all_chunks = []
+    for doc in processed_docs:
+        for chunk in doc["chunks"]:
+            # Agregar metadatos del documento al chunk para el etiquetado
+            chunk_with_metadata = chunk.copy()
+            chunk_with_metadata["document_metadata"] = doc["metadata"]
+            all_chunks.append(chunk_with_metadata)
+
+    logger.info(f"📚 Total chunks para entrenamiento: {len(all_chunks)}")
+
+    if len(all_chunks) < 10:
+        logger.warning("⚠️ Muy pocos chunks para entrenar clasificador")
         return None
 
-    # PASO 4: Verificación y pruebas de búsqueda
-    logger.info(f"\n🔍 PASO 4: Verificación con Búsquedas de Prueba")
+    try:
+        # Crear y entrenar clasificador
+        classifier = SimpleQualityClassifier()
+        training_results = classifier.train(all_chunks)
+
+        # Guardar modelo
+        model_path = Path("models/quality_classifier.joblib")
+        model_path.parent.mkdir(exist_ok=True)
+        classifier.save_model(model_path)
+
+        logger.info("🎉 CLASIFICADOR ENTRENADO EXITOSAMENTE!")
+        logger.info(f"📊 Precisión: {training_results.get('accuracy', 'N/A')}")
+        logger.info(f"💾 Modelo guardado en: {model_path}")
+
+        return classifier
+
+    except Exception as e:
+        logger.error(f"❌ Error entrenando clasificador: {e}")
+        return None
+
+
+def classify_new_documents(classifier, processed_docs):
+    """
+    Clasifica documentos nuevos usando el clasificador entrenado
+
+    Args:
+        classifier: SimpleQualityClassifier entrenado
+        processed_docs: Lista de documentos a clasificar
+
+    Returns:
+        Lista de documentos con clasificación de calidad
+    """
+    if not classifier or not classifier.is_trained:
+        logger.warning("⚠️ Clasificador no disponible - saltando clasificación")
+        return processed_docs
+
+    logger.info(f"\n🔍 === CLASIFICANDO DOCUMENTOS NUEVOS ===")
+    logger.info("-" * 50)
+
+    classified_docs = []
+    quality_stats = {"relevante": 0, "ambiguo": 0, "irrelevante": 0}
+
+    for doc in processed_docs:
+        logger.info(f"🔍 Clasificando: {doc['metadata']['file_name']}")
+
+        try:
+            # Clasificar chunks del documento
+            enhanced_chunks = classifier.predict(doc["chunks"])
+            doc["chunks"] = enhanced_chunks
+
+            # Análisis estadístico del documento
+            doc_quality_stats = {"relevante": 0, "ambiguo": 0, "irrelevante": 0}
+            for chunk in enhanced_chunks:
+                label = chunk.get("quality_label", "ambiguo")
+                doc_quality_stats[label] += 1
+                quality_stats[label] += 1
+
+            total_chunks = len(enhanced_chunks)
+            relevant_ratio = doc_quality_stats["relevante"] / total_chunks if total_chunks > 0 else 0
+
+            # Determinar calidad general del documento
+            if relevant_ratio >= 0.7:
+                doc_quality = "alta_calidad"
+            elif relevant_ratio >= 0.4:
+                doc_quality = "calidad_media"
+            else:
+                doc_quality = "baja_calidad"
+
+            # Agregar análisis a metadatos del documento
+            doc["metadata"]["quality_analysis"] = {
+                "document_quality": doc_quality,
+                "relevant_chunks": doc_quality_stats["relevante"],
+                "ambiguous_chunks": doc_quality_stats["ambiguo"],
+                "irrelevant_chunks": doc_quality_stats["irrelevante"],
+                "relevance_ratio": relevant_ratio
+            }
+
+            brand = doc["metadata"].get("brand", "unknown")
+            logger.info(f"✅ {brand.upper()}: {doc_quality} ({doc_quality_stats['relevante']}/{total_chunks} relevantes)")
+
+            classified_docs.append(doc)
+
+        except Exception as e:
+            logger.error(f"❌ Error clasificando documento: {e}")
+            classified_docs.append(doc)  # Agregar sin clasificar
+
+    logger.info(f"\n📊 RESUMEN DE CLASIFICACIÓN:")
+    logger.info(f"   📄 Documentos clasificados: {len(classified_docs)}")
+    logger.info(f"   🔍 Distribución de chunks:")
+    for label, count in quality_stats.items():
+        percentage = (count / sum(quality_stats.values())) * 100 if sum(quality_stats.values()) > 0 else 0
+        logger.info(f"      {label}: {count} chunks ({percentage:.1f}%)")
+
+    return classified_docs
+
+
+def enhanced_chroma_pipeline():
+    """
+    Pipeline completo con entrenamiento y clasificación
+    Flujo: data/raw/* (entrenar) → data/new/* (clasificar)
+    """
+    logger.info("🚀 === SMARTWATCH KNOWLEDGE SYSTEM CON CLASIFICADOR ===")
+    logger.info("📋 Pipeline: Entrenamiento + Clasificación + Almacenamiento")
+    logger.info("=" * 80)
+
+    total_start = time.time()
+
+    # PASO 1: Verificar conexión con Chroma
+    logger.info("\n🔌 PASO 1: Conexión con ChromaDB")
     logger.info("-" * 40)
 
-    # Queries de prueba para verificar que funciona
-    test_queries = [
-        {
-            "query": "Apple Watch battery drain",
-            "expected_brand": "apple",
-            "description": "Problema de batería Apple"
-        },
-        {
-            "query": "Samsung charging issues",
-            "expected_brand": "samsung",
-            "description": "Problemas de carga Samsung"
-        },
-        {
-            "query": "Fitbit sleep tracking",
-            "expected_brand": "fitbit",
-            "description": "Seguimiento de sueño Fitbit"
-        }
-    ]
+    try:
+        chroma_manager = ChromaManager()
 
-    search_results_summary = []
+        # Verificar estado actual
+        stats = chroma_manager.get_collection_stats()
+        logger.info(f"📊 Estado actual de Chroma:")
+        logger.info(f"   📚 Documentos existentes: {stats.get('total_documents', 0)}")
 
-    for i, test in enumerate(test_queries, 1):
-        logger.info(f"\n🧪 Prueba {i}: {test['description']}")
-        logger.info(f"   Query: '{test['query']}'")
+        # Limpiar colección como siempre (para midterm)
+        if stats.get('total_documents', 0) > 0:
+            logger.info("⚠️ Limpiando colección para demo fresca...")
+            chroma_manager.clear_collection()
+            logger.info("🗑️ Colección limpiada")
 
-        search_start = time.time()
-        results = chroma_manager.search(test["query"], top_k=3)
-        search_time = time.time() - search_start
+    except Exception as e:
+        logger.error(f"❌ Error conectando con Chroma: {e}")
+        logger.error("💡 Asegúrate de que Docker esté corriendo:")
+        logger.error("   docker run -v ./chroma-data:/data -p 8000:8000 chromadb/chroma")
+        return None
 
-        if results:
-            top_result = results[0]
-            top_brand = top_result["metadata"].get("brand", "unknown")
-            score = top_result["similarity_score"]
+    # PASO 2: Inicializar componentes de procesamiento
+    logger.info("\n⚙️ PASO 2: Inicializar Componentes")
+    logger.info("-" * 40)
 
-            logger.info(f"   ⚡ Búsqueda en {search_time:.3f} segundos")
-            logger.info(f"   🎯 Top resultado: {top_brand.upper()} (score: {score:.3f})")
-            logger.info(f"   📝 Preview: {top_result['text'][:100]}...")
+    processor = DocumentProcessor(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+    embedding_generator = EmbeddingGenerator(EMBEDDING_MODEL_NAME)
 
-            # Verificar si encontró la marca esperada
-            if test["expected_brand"] in top_brand:
-                logger.info(f"   ✅ Resultado CORRECTO")
-                search_results_summary.append("✅")
-            else:
-                logger.info(f"   ⚠️ Resultado inesperado (esperaba {test['expected_brand']})")
-                search_results_summary.append("⚠️")
-        else:
-            logger.info(f"   ❌ No se encontraron resultados")
-            search_results_summary.append("❌")
+    # Mostrar configuración
+    model_info = embedding_generator.get_model_info()
+    logger.info(f"🧠 Modelo embedding: {model_info['model_name']}")
+    logger.info(f"📐 Dimensión: {model_info['embedding_dimension']}D")
+    logger.info(f"📏 Chunk size: {CHUNK_SIZE} palabras")
+
+    # PASO 3: Procesar documentos de entrenamiento (data/raw/*)
+    training_docs = process_documents_from_directory(
+        processor, embedding_generator,
+        RAW_DATA_DIR, "DATOS DE ENTRENAMIENTO"
+    )
+
+    if not training_docs:
+        logger.error("❌ No hay datos de entrenamiento disponibles")
+        return None
+
+    # PASO 4: Entrenar clasificador con datos de entrenamiento
+    classifier = train_quality_classifier(training_docs)
+
+    # PASO 5: Almacenar datos de entrenamiento en ChromaDB
+    logger.info(f"\n💾 PASO 5: Almacenar Datos de Entrenamiento")
+    logger.info("-" * 50)
+
+    storage_result = chroma_manager.store_documents(training_docs)
+    logger.info(f"✅ Datos de entrenamiento almacenados: {storage_result['chunks_stored']} chunks")
+
+    # PASO 6: Procesar documentos nuevos (data/new/*)
+    new_data_dir = DATA_DIR / "new"
+    new_docs = process_documents_from_directory(
+        processor, embedding_generator,
+        new_data_dir, "DOCUMENTOS NUEVOS"
+    )
+
+    # PASO 7: Clasificar documentos nuevos (si hay clasificador y documentos)
+    if new_docs and classifier:
+        classified_new_docs = classify_new_documents(classifier, new_docs)
+
+        # PASO 8: Almacenar documentos nuevos clasificados
+        logger.info(f"\n💾 PASO 8: Almacenar Documentos Nuevos Clasificados")
+        logger.info("-" * 50)
+
+        storage_result_new = chroma_manager.store_documents(classified_new_docs)
+        logger.info(f"✅ Documentos nuevos almacenados: {storage_result_new['chunks_stored']} chunks")
+
+    elif new_docs:
+        logger.info("\n⚠️ Documentos nuevos encontrados pero sin clasificador")
+        logger.info("💡 Almacenando sin clasificar...")
+        storage_result_new = chroma_manager.store_documents(new_docs)
+        logger.info(f"✅ Documentos almacenados: {storage_result_new['chunks_stored']} chunks")
+
+    else:
+        logger.info(f"\n📄 No se encontraron documentos nuevos en {new_data_dir}")
+        storage_result_new = {"chunks_stored": 0}
 
     # RESUMEN FINAL
     total_time = time.time() - total_start
+    final_stats = chroma_manager.get_collection_stats()
 
-    logger.info(f"\n🎉 === PIPELINE COMPLETADO EXITOSAMENTE ===")
-    logger.info("=" * 70)
-    logger.info(f"⏱️ TIEMPO TOTAL: {total_time:.1f} segundos")
-    logger.info(f"📊 RESULTADOS:")
-    logger.info(f"   📄 Documentos procesados: {len(all_processed_docs)}")
-    logger.info(f"   📦 Chunks con embeddings: {total_chunks}")
-    logger.info(f"   💾 Almacenados en Chroma: {storage_stats['chunks_stored']}")
-    logger.info(f"   🔍 Búsquedas de prueba: {'/'.join(search_results_summary)}")
-
-    logger.info(f"\n🎯 FASE 1 COMPLETADA:")
-    logger.info("   ✅ Pipeline de ingesta funcionando")
-    logger.info("   ✅ Integración con Chroma DB exitosa")
-    logger.info("   ✅ Almacenamiento vectorial persistente")
-    logger.info("   ✅ Búsqueda semántica básica operativa")
-
-    logger.info(f"\n📋 SIGUIENTE: FASE 2")
-    logger.info("   🎯 Clasificador de relevancia (Logistic Regression)")
-    logger.info("   🚨 Detección de anomalías (Isolation Forest)")
-    logger.info("   🔍 Sistema de búsqueda semántica avanzado")
+    logger.info(f"\n🎉 === RESUMEN FINAL ===")
+    logger.info("=" * 50)
+    logger.info(f"⏱️ Tiempo total: {total_time:.1f} segundos")
+    logger.info(f"📚 Documentos de entrenamiento: {len(training_docs)}")
+    logger.info(f"📄 Documentos nuevos: {len(new_docs) if new_docs else 0}")
+    logger.info(f"🤖 Clasificador: {'✅ Entrenado' if classifier else '❌ No disponible'}")
+    logger.info(f"💾 Total en ChromaDB: {final_stats.get('total_documents', 0)} chunks")
+    logger.info(f"📦 Chunks de entrenamiento: {storage_result['chunks_stored']}")
+    logger.info(f"📦 Chunks nuevos: {storage_result_new['chunks_stored']}")
 
     return {
-        "processed_docs": all_processed_docs,
         "chroma_manager": chroma_manager,
-        "storage_stats": storage_stats,
-        "total_time": total_time
+        "classifier": classifier,
+        "training_docs": len(training_docs),
+        "new_docs": len(new_docs) if new_docs else 0,
+        "total_chunks": final_stats.get('total_documents', 0)
     }
 
 
-def demo_search_interface(chroma_manager: ChromaManager):
-    """
-    Demo interactiva de búsqueda una vez que los datos están en Chroma
-    """
-    logger.info(f"\n🎭 === DEMO INTERACTIVA DE BÚSQUEDA ===")
-    logger.info("🔍 Prueba búsquedas en tu base de conocimiento")
-    logger.info("💡 Escribe 'quit' para salir")
-    logger.info("-" * 50)
+def demo_search_interface(chroma_manager):
+    """Demo de búsqueda para probar el sistema completo"""
+    logger.info("\n🔍 === DEMO DE BÚSQUEDA ===")
 
     while True:
         try:
-            query = input("\n❓ Tu consulta: ").strip()
+            query = input("\n🔍 Ingresa tu consulta (o 'quit' para salir): ").strip()
 
             if query.lower() in ['quit', 'exit', 'salir', 'q']:
-                logger.info("👋 ¡Demo terminada!")
                 break
 
             if not query:
                 continue
 
             # Realizar búsqueda
-            start_time = time.time()
             results = chroma_manager.search(query, top_k=3)
-            search_time = time.time() - start_time
 
-            if results:
-                logger.info(f"⚡ Encontrado en {search_time:.3f} segundos:")
+            print(f"\n📋 Resultados para: '{query}'")
+            print("-" * 60)
 
-                for i, result in enumerate(results, 1):
-                    score = result["similarity_score"]
-                    brand = result["metadata"].get("brand", "unknown")
-                    doc_name = result["metadata"].get("document_name", "unknown")
-                    text_preview = result["text"][:150] + "..."
+            if not results:
+                print("❌ No se encontraron resultados")
+                continue
 
-                    print(f"\n{i}. [{brand.upper()}] Score: {score:.3f}")
-                    print(f"   📄 Fuente: {doc_name}")
-                    print(f"   📝 {text_preview}")
-            else:
-                print("❌ No se encontraron resultados relevantes")
+            for i, result in enumerate(results, 1):
+                similarity = result['similarity_score']
+                text = result['text'][:150] + "..." if len(result['text']) > 150 else result['text']
+                brand = result['metadata'].get('brand', 'unknown').upper()
+                doc_name = result['metadata'].get('document_name', 'unknown')
+                quality = result['metadata'].get('chunk_quality', 'sin_clasificar')
+
+                print(f"\n{i}. [{brand}] {doc_name}")
+                print(f"   📊 Similitud: {similarity:.3f}")
+                if quality != 'sin_clasificar':
+                    print(f"   🔍 Calidad: {quality}")
+                print(f"   📝 {text}")
 
         except KeyboardInterrupt:
-            logger.info("\n👋 Demo interrumpida")
             break
         except Exception as e:
-            logger.error(f"Error en búsqueda: {e}")
+            print(f"❌ Error en búsqueda: {e}")
 
 
 def main():
-    """Función principal del pipeline con Chroma"""
+    """Función principal"""
     setup_logging()
 
     try:
-        # Ejecutar pipeline completo
-        results = test_chroma_pipeline()
+        results = enhanced_chroma_pipeline()
 
         if results:
-            # Ofrecer demo interactiva
-            response = input("\n🤔 ¿Quieres probar la búsqueda interactiva? (y/n): ").strip().lower()
+            logger.info("🎯 Pipeline completado exitosamente!")
+
+            # Demo de búsqueda opcional
+            response = input("\n¿Quieres probar el sistema de búsqueda? (y/n): ").strip().lower()
             if response in ['y', 'yes', 's', 'si']:
                 demo_search_interface(results["chroma_manager"])
-
-            logger.info("🎯 Pipeline con Chroma completado exitosamente!")
         else:
             logger.error("❌ Pipeline falló")
 
@@ -305,5 +409,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

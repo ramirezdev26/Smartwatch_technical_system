@@ -11,6 +11,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 EMBEDDINGS_DIR = DATA_DIR / "embeddings"
+NEW_DATA_DIR = DATA_DIR / "new"
 
 # Configuración del modelo de embeddings
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v1"
@@ -82,6 +83,10 @@ for directory in [DATA_DIR, RAW_DATA_DIR, PROCESSED_DATA_DIR, EMBEDDINGS_DIR]:
 
 for brand in SUPPORTED_BRANDS:
     (RAW_DATA_DIR / brand).mkdir(exist_ok=True)
+
+NEW_DATA_DIR.mkdir(exist_ok=True)
+for brand in SUPPORTED_BRANDS:
+    (NEW_DATA_DIR / brand).mkdir(exist_ok=True)
 
 # Crear directorio de logs
 LOG_FILE.parent.mkdir(exist_ok=True)
