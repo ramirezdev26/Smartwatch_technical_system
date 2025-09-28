@@ -1,8 +1,6 @@
 # Presentación Midterm - Proyecto Capstone
 ## Sistema Inteligente de Gestión de Conocimiento Técnico para Smartwatches
 
-**Siguiendo lineamientos PresentaciónJU.pdf**
-
 ---
 
 ## Diapositiva 1: Portada
