@@ -1,3 +1,4 @@
+joblib
 # Core dependencies - Versiones compatibles con Python 3.12
 sentence-transformers>=2.3.0
 chromadb>=0.4.22
