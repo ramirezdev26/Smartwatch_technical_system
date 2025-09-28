@@ -2,6 +2,7 @@
 Clasificador de Calidad SIMPLIFICADO para aprender ML básico
 Solo 10 características fáciles de entender + Logistic Regression básico
 """
+
 import numpy as np
 import joblib
 from pathlib import Path
@@ -29,7 +30,7 @@ class SimpleQualityClassifier:
         self.classifier = LogisticRegression(
             random_state=42,
             max_iter=500,  # Menos iteraciones
-            solver='lbfgs'  # Solver simple
+            solver="lbfgs",  # Solver simple
         )
 
         self.is_trained = False
@@ -92,24 +93,29 @@ class SimpleQualityClassifier:
             logger.info(f"⚠️ POCOS DATOS DETECTADOS:")
             logger.info(f"   📦 Total ejemplos: {total_samples}")
             logger.info(f"   📊 Clase con menos ejemplos: {min_samples_per_class}")
-            logger.info(f"💡 ESTRATEGIA: Entrenar con todos los datos (sin división train/test)")
+            logger.info(
+                f"💡 ESTRATEGIA: Entrenar con todos los datos (sin división train/test)"
+            )
             logger.info("   📚 En ML real, necesitas más datos para validación robusta")
 
             X_train, X_test = features, features  # Usar todos los datos
             y_train, y_test = y, y
 
             logger.info(f"📚 Datos de entrenamiento: {len(X_train)} ejemplos (todos)")
-            logger.info(f"🧪 Datos de prueba: {len(X_test)} ejemplos (los mismos - solo para demo)")
+            logger.info(
+                f"🧪 Datos de prueba: {len(X_test)} ejemplos (los mismos - solo para demo)"
+            )
 
         else:
             # CASO: Suficientes datos - división normal
             logger.info(f"✅ SUFICIENTES DATOS para división train/test")
 
             X_train, X_test, y_train, y_test = train_test_split(
-                features, y,
+                features,
+                y,
                 test_size=0.2,  # 20% para prueba
                 random_state=42,
-                stratify=y  # Mantener proporción de clases
+                stratify=y,  # Mantener proporción de clases
             )
 
             logger.info(f"📚 Datos de entrenamiento: {len(X_train)} ejemplos")
@@ -135,8 +141,12 @@ class SimpleQualityClassifier:
         train_accuracy = self.classifier.score(X_train_scaled, y_train)
         test_accuracy = self.classifier.score(X_test_scaled, y_test)
 
-        logger.info(f"🎯 Accuracy en ENTRENAMIENTO: {train_accuracy:.3f} ({train_accuracy*100:.1f}%)")
-        logger.info(f"🎯 Accuracy en PRUEBA: {test_accuracy:.3f} ({test_accuracy*100:.1f}%)")
+        logger.info(
+            f"🎯 Accuracy en ENTRENAMIENTO: {train_accuracy:.3f} ({train_accuracy*100:.1f}%)"
+        )
+        logger.info(
+            f"🎯 Accuracy en PRUEBA: {test_accuracy:.3f} ({test_accuracy*100:.1f}%)"
+        )
 
         # Predicciones para análisis detallado
         y_pred = self.classifier.predict(X_test_scaled)
@@ -145,7 +155,9 @@ class SimpleQualityClassifier:
         test_labels_text = [self.number_to_label[num] for num in y_test]
         pred_labels_text = [self.number_to_label[num] for num in y_pred]
 
-        report = classification_report(test_labels_text, pred_labels_text, output_dict=True)
+        report = classification_report(
+            test_labels_text, pred_labels_text, output_dict=True
+        )
 
         # Matriz de confusión
         conf_matrix = confusion_matrix(y_test, y_pred)
@@ -167,7 +179,9 @@ class SimpleQualityClassifier:
             "classification_report": report,
             "confusion_matrix": conf_matrix.tolist(),
             "feature_importance": importance_analysis,
-            "label_distribution": {label: int(count) for label, count in zip(unique, counts)}
+            "label_distribution": {
+                label: int(count) for label, count in zip(unique, counts)
+            },
         }
 
         # Mostrar resultados finales
@@ -199,12 +213,14 @@ class SimpleQualityClassifier:
 
         importance_list = []
         for i, (name, importance) in enumerate(zip(feature_names, avg_importance)):
-            importance_list.append({
-                "name": name,
-                "importance": float(importance),
-                "explanation": feature_explanations[name],
-                "rank": 0  # Se llenará después de ordenar
-            })
+            importance_list.append(
+                {
+                    "name": name,
+                    "importance": float(importance),
+                    "explanation": feature_explanations[name],
+                    "rank": 0,  # Se llenará después de ordenar
+                }
+            )
 
         # Ordenar por importancia
         importance_list.sort(key=lambda x: x["importance"], reverse=True)
@@ -216,15 +232,19 @@ class SimpleQualityClassifier:
         # Log características más importantes
         logger.info("🔍 TOP 5 CARACTERÍSTICAS MÁS IMPORTANTES:")
         for item in importance_list[:5]:
-            logger.info(f"   {item['rank']}. {item['name']} (importancia: {item['importance']:.3f})")
+            logger.info(
+                f"   {item['rank']}. {item['name']} (importancia: {item['importance']:.3f})"
+            )
             logger.info(f"      📝 {item['explanation']}")
 
         return {
             "top_features": importance_list[:10],  # Top 10
-            "feature_count": len(feature_names)
+            "feature_count": len(feature_names),
         }
 
-    def predict(self, chunks: List[Dict[str, Any]], explain: bool = False) -> List[Dict[str, Any]]:
+    def predict(
+        self, chunks: List[Dict[str, Any]], explain: bool = False
+    ) -> List[Dict[str, Any]]:
         """
         Predice calidad de chunks de forma SIMPLE
         """
@@ -265,7 +285,7 @@ class SimpleQualityClassifier:
             enhanced_chunk["probabilities"] = {
                 "irrelevante": float(chunk_probabilities[0]),
                 "ambiguo": float(chunk_probabilities[1]),
-                "relevante": float(chunk_probabilities[2])
+                "relevante": float(chunk_probabilities[2]),
             }
 
             enhanced_chunks.append(enhanced_chunk)
@@ -300,24 +320,30 @@ class SimpleQualityClassifier:
         feature_explanations = self.feature_extractor.explain_features()
 
         explanation = {
-            "text_preview": chunk["text"][:100] + "..." if len(chunk["text"]) > 100 else chunk["text"],
+            "text_preview": (
+                chunk["text"][:100] + "..."
+                if len(chunk["text"]) > 100
+                else chunk["text"]
+            ),
             "predicted_label": self.number_to_label[prediction],
             "confidence": float(np.max(probabilities)),
             "probabilities": {
                 "irrelevante": float(probabilities[0]),
                 "ambiguo": float(probabilities[1]),
-                "relevante": float(probabilities[2])
+                "relevante": float(probabilities[2]),
             },
-            "characteristics": []
+            "characteristics": [],
         }
 
         # Mostrar las características más relevantes
         for i, (name, value) in enumerate(zip(feature_names, chunk_features)):
-            explanation["characteristics"].append({
-                "name": name,
-                "value": float(value),
-                "explanation": feature_explanations[name]
-            })
+            explanation["characteristics"].append(
+                {
+                    "name": name,
+                    "value": float(value),
+                    "explanation": feature_explanations[name],
+                }
+            )
 
         return explanation
 
@@ -336,8 +362,8 @@ class SimpleQualityClassifier:
             "is_trained": self.is_trained,
             "label_mappings": {
                 "label_to_number": self.label_to_number,
-                "number_to_label": self.number_to_label
-            }
+                "number_to_label": self.number_to_label,
+            },
         }
 
         joblib.dump(model_data, model_path)
@@ -374,5 +400,5 @@ class SimpleQualityClassifier:
             "features_used": 10,
             "classes": ["irrelevante", "ambiguo", "relevante"],
             "test_accuracy": self.training_info.get("test_accuracy", 0),
-            "total_training_samples": self.training_info.get("total_chunks", 0)
+            "total_training_samples": self.training_info.get("total_chunks", 0),
         }

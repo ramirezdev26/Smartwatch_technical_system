@@ -1,6 +1,7 @@
 """
 Generador de embeddings usando all-MiniLM-L6-v1
 """
+
 from sentence_transformers import SentenceTransformer
 import numpy as np
 from typing import List, Dict, Any
@@ -55,14 +56,16 @@ class EmbeddingGenerator:
             texts,
             batch_size=32,  # Procesar en lotes de 32
             show_progress_bar=True,
-            convert_to_numpy=True
+            convert_to_numpy=True,
         )
 
         # Añadir embeddings a los chunks
         enhanced_chunks = []
         for i, chunk in enumerate(chunks):
             enhanced_chunk = chunk.copy()
-            enhanced_chunk["embedding"] = embeddings[i].tolist()  # Convertir a lista para JSON
+            enhanced_chunk["embedding"] = embeddings[
+                i
+            ].tolist()  # Convertir a lista para JSON
             enhanced_chunk["embedding_model"] = self.model_name
             enhanced_chunk["embedding_dimension"] = len(embeddings[i])
             enhanced_chunks.append(enhanced_chunk)
@@ -97,5 +100,5 @@ class EmbeddingGenerator:
             "model_name": self.model_name,
             "max_seq_length": self.model.max_seq_length,
             "embedding_dimension": self.model.get_sentence_embedding_dimension(),
-            "status": "loaded"
+            "status": "loaded",
         }

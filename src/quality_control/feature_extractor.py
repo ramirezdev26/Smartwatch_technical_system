@@ -2,6 +2,7 @@
 Feature Extractor SIMPLIFICADO para aprender ML básico
 Solo características básicas y fáciles de entender
 """
+
 import numpy as np
 from typing import Dict, List, Any
 from loguru import logger
@@ -13,14 +14,22 @@ class SimpleFeatureExtractor:
     def __init__(self):
         # Solo keywords básicos y comprensibles
         self.technical_words = [
-            'battery', 'charge', 'charging', 'power',
-            'settings', 'problem', 'fix', 'press', 'tap',
-            'watch', 'device', 'screen', 'button'
+            "battery",
+            "charge",
+            "charging",
+            "power",
+            "settings",
+            "problem",
+            "fix",
+            "press",
+            "tap",
+            "watch",
+            "device",
+            "screen",
+            "button",
         ]
 
-        self.irrelevant_words = [
-            'page', 'copyright', 'chapter', 'section', 'contents'
-        ]
+        self.irrelevant_words = ["page", "copyright", "chapter", "section", "contents"]
 
     def extract_features(self, chunks: List[Dict[str, Any]]) -> np.ndarray:
         """
@@ -39,7 +48,9 @@ class SimpleFeatureExtractor:
 
         features_array = np.array(features_list)
         logger.info(f"✅ Características extraídas: {features_array.shape}")
-        logger.info(f"📊 Solo {features_array.shape[1]} características SIMPLES por chunk")
+        logger.info(
+            f"📊 Solo {features_array.shape[1]} características SIMPLES por chunk"
+        )
 
         return features_array
 
@@ -70,7 +81,9 @@ class SimpleFeatureExtractor:
         technical_count = sum(1 for word in self.technical_words if word in text_lower)
 
         # === CARACTERÍSTICA 6: ¿Tiene palabras irrelevantes? ===
-        irrelevant_count = sum(1 for word in self.irrelevant_words if word in text_lower)
+        irrelevant_count = sum(
+            1 for word in self.irrelevant_words if word in text_lower
+        )
 
         # === CARACTERÍSTICA 7: ¿Es de Apple? ===
         brand = metadata.get("brand", "").lower()
@@ -84,38 +97,42 @@ class SimpleFeatureExtractor:
         is_early_chunk = 1 if chunk_position < 5 else 0
 
         # === CARACTERÍSTICA 10: ¿Tiene mayúsculas excesivas? ===
-        uppercase_ratio = sum(1 for char in text if char.isupper()) / len(text) if text else 0
+        uppercase_ratio = (
+            sum(1 for char in text if char.isupper()) / len(text) if text else 0
+        )
         has_many_caps = 1 if uppercase_ratio > 0.3 else 0
 
         # Vector final de SOLO 10 características
-        features = np.array([
-            word_count,           # 1. Longitud en palabras
-            char_count,           # 2. Longitud en caracteres
-            is_very_short,        # 3. ¿Es muy corto?
-            has_numbers,          # 4. ¿Tiene números?
-            technical_count,      # 5. Cantidad de palabras técnicas
-            irrelevant_count,     # 6. Cantidad de palabras irrelevantes
-            is_apple,             # 7. ¿Es de Apple?
-            is_samsung,           # 8. ¿Es de Samsung?
-            is_early_chunk,       # 9. ¿Está al principio?
-            has_many_caps         # 10. ¿Tiene muchas mayúsculas?
-        ])
+        features = np.array(
+            [
+                word_count,  # 1. Longitud en palabras
+                char_count,  # 2. Longitud en caracteres
+                is_very_short,  # 3. ¿Es muy corto?
+                has_numbers,  # 4. ¿Tiene números?
+                technical_count,  # 5. Cantidad de palabras técnicas
+                irrelevant_count,  # 6. Cantidad de palabras irrelevantes
+                is_apple,  # 7. ¿Es de Apple?
+                is_samsung,  # 8. ¿Es de Samsung?
+                is_early_chunk,  # 9. ¿Está al principio?
+                has_many_caps,  # 10. ¿Tiene muchas mayúsculas?
+            ]
+        )
 
         return features
 
     def get_feature_names(self) -> List[str]:
         """Nombres SIMPLES y comprensibles de las 10 características"""
         return [
-            "word_count",           # Número de palabras
-            "char_count",           # Número de caracteres
-            "is_very_short",        # ¿Es muy corto? (1=sí, 0=no)
-            "has_numbers",          # ¿Tiene números? (1=sí, 0=no)
-            "technical_count",      # Cantidad de palabras técnicas
-            "irrelevant_count",     # Cantidad de palabras irrelevantes
-            "is_apple",             # ¿Es de Apple? (1=sí, 0=no)
-            "is_samsung",           # ¿Es de Samsung? (1=sí, 0=no)
-            "is_early_chunk",       # ¿Está al principio del documento? (1=sí, 0=no)
-            "has_many_caps"         # ¿Tiene muchas mayúsculas? (1=sí, 0=no)
+            "word_count",  # Número de palabras
+            "char_count",  # Número de caracteres
+            "is_very_short",  # ¿Es muy corto? (1=sí, 0=no)
+            "has_numbers",  # ¿Tiene números? (1=sí, 0=no)
+            "technical_count",  # Cantidad de palabras técnicas
+            "irrelevant_count",  # Cantidad de palabras irrelevantes
+            "is_apple",  # ¿Es de Apple? (1=sí, 0=no)
+            "is_samsung",  # ¿Es de Samsung? (1=sí, 0=no)
+            "is_early_chunk",  # ¿Está al principio del documento? (1=sí, 0=no)
+            "has_many_caps",  # ¿Tiene muchas mayúsculas? (1=sí, 0=no)
         ]
 
     def explain_features(self) -> Dict[str, str]:
@@ -130,10 +147,12 @@ class SimpleFeatureExtractor:
             "is_apple": "1 si es de Apple, 0 si es de otra marca",
             "is_samsung": "1 si es de Samsung, 0 si es de otra marca",
             "is_early_chunk": "1 si está en los primeros 5 chunks del documento, 0 si no",
-            "has_many_caps": "1 si más del 30% son mayúsculas, 0 si no"
+            "has_many_caps": "1 si más del 30% son mayúsculas, 0 si no",
         }
 
-    def analyze_features_simple(self, features: np.ndarray, labels: List[str] = None) -> None:
+    def analyze_features_simple(
+        self, features: np.ndarray, labels: List[str] = None
+    ) -> None:
         """Análisis SIMPLE y comprensible de las características"""
         feature_names = self.get_feature_names()
         explanations = self.explain_features()
@@ -152,7 +171,9 @@ class SimpleFeatureExtractor:
             # Si es binario (0 o 1), mostrar porcentaje
             if set(values).issubset({0, 1}):
                 percentage = np.mean(values) * 100
-                logger.info(f"   ✅ {percentage:.1f}% de chunks tienen esta característica")
+                logger.info(
+                    f"   ✅ {percentage:.1f}% de chunks tienen esta característica"
+                )
 
         # Si tenemos labels, mostrar diferencias por clase
         if labels:
@@ -168,7 +189,11 @@ class SimpleFeatureExtractor:
                         logger.info(f"\n📋 CHUNKS '{label.upper()}':")
 
                         # Solo mostrar las 3 características más diferentes
-                        avg_relevant = np.mean(features[np.array(labels) == "relevante"], axis=0) if "relevante" in labels else features.mean(axis=0)
+                        avg_relevant = (
+                            np.mean(features[np.array(labels) == "relevante"], axis=0)
+                            if "relevante" in labels
+                            else features.mean(axis=0)
+                        )
                         avg_this_label = np.mean(label_features, axis=0)
                         differences = np.abs(avg_this_label - avg_relevant)
                         top_different = np.argsort(differences)[-3:][::-1]

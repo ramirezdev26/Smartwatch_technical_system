@@ -2,6 +2,7 @@
 Pipeline principal CON integración del clasificador de calidad
 Flujo: data/raw/* (entrenar) → data/new/* (clasificar)
 """
+
 import sys
 from pathlib import Path
 import pandas as pd
@@ -24,14 +25,16 @@ def setup_logging():
     logger.add(
         sys.stdout,
         level=LOG_LEVEL,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
     )
 
     LOG_FILE.parent.mkdir(exist_ok=True)
     logger.add(LOG_FILE, level=LOG_LEVEL, rotation="10 MB")
 
 
-def process_documents_from_directory(processor, embedding_generator, base_dir, description):
+def process_documents_from_directory(
+    processor, embedding_generator, base_dir, description
+):
     """
     Procesa documentos de un directorio específico
 
@@ -188,7 +191,9 @@ def classify_new_documents(classifier, processed_docs):
                 chunk["chunk_quality"] = label
 
             total_chunks = len(enhanced_chunks)
-            relevant_ratio = doc_quality_stats["relevante"] / total_chunks if total_chunks > 0 else 0
+            relevant_ratio = (
+                doc_quality_stats["relevante"] / total_chunks if total_chunks > 0 else 0
+            )
 
             # Determinar calidad general del documento
             if relevant_ratio >= 0.7:
@@ -204,11 +209,13 @@ def classify_new_documents(classifier, processed_docs):
                 "relevant_chunks": doc_quality_stats["relevante"],
                 "ambiguous_chunks": doc_quality_stats["ambiguo"],
                 "irrelevant_chunks": doc_quality_stats["irrelevante"],
-                "relevance_ratio": relevant_ratio
+                "relevance_ratio": relevant_ratio,
             }
 
             brand = doc["metadata"].get("brand", "unknown")
-            logger.info(f"✅ {brand.upper()}: {doc_quality} ({doc_quality_stats['relevante']}/{total_chunks} relevantes)")
+            logger.info(
+                f"✅ {brand.upper()}: {doc_quality} ({doc_quality_stats['relevante']}/{total_chunks} relevantes)"
+            )
 
             classified_docs.append(doc)
 
@@ -220,7 +227,11 @@ def classify_new_documents(classifier, processed_docs):
     logger.info(f"   📄 Documentos clasificados: {len(classified_docs)}")
     logger.info(f"   🔍 Distribución de chunks:")
     for label, count in quality_stats.items():
-        percentage = (count / sum(quality_stats.values())) * 100 if sum(quality_stats.values()) > 0 else 0
+        percentage = (
+            (count / sum(quality_stats.values())) * 100
+            if sum(quality_stats.values()) > 0
+            else 0
+        )
         logger.info(f"      {label}: {count} chunks ({percentage:.1f}%)")
 
     return classified_docs
@@ -250,7 +261,7 @@ def enhanced_chroma_pipeline():
         logger.info(f"   📚 Documentos existentes: {stats.get('total_documents', 0)}")
 
         # Limpiar colección como siempre (para midterm)
-        if stats.get('total_documents', 0) > 0:
+        if stats.get("total_documents", 0) > 0:
             logger.info("⚠️ Limpiando colección para demo fresca...")
             chroma_manager.clear_collection()
             logger.info("🗑️ Colección limpiada")
@@ -258,7 +269,9 @@ def enhanced_chroma_pipeline():
     except Exception as e:
         logger.error(f"❌ Error conectando con Chroma: {e}")
         logger.error("💡 Asegúrate de que Docker esté corriendo:")
-        logger.error("   docker run -v ./chroma-data:/data -p 8000:8000 chromadb/chroma")
+        logger.error(
+            "   docker run -v ./chroma-data:/data -p 8000:8000 chromadb/chroma"
+        )
         return None
 
     # PASO 2: Inicializar componentes de procesamiento
@@ -276,8 +289,7 @@ def enhanced_chroma_pipeline():
 
     # PASO 3: Procesar documentos de entrenamiento (data/raw/*)
     training_docs = process_documents_from_directory(
-        processor, embedding_generator,
-        RAW_DATA_DIR, "DATOS DE ENTRENAMIENTO"
+        processor, embedding_generator, RAW_DATA_DIR, "DATOS DE ENTRENAMIENTO"
     )
 
     if not training_docs:
@@ -293,6 +305,7 @@ def enhanced_chroma_pipeline():
 
     # Importar el auto labeler
     from src.quality_control.auto_labeler import SimpleAutoLabeler
+
     auto_labeler = SimpleAutoLabeler()
 
     # Etiquetar todos los chunks de entrenamiento
@@ -314,7 +327,9 @@ def enhanced_chroma_pipeline():
             chunk["chunk_quality"] = label
 
         brand = doc["metadata"].get("brand", "unknown")
-        logger.info(f"✅ {brand.upper()}: {quality_stats['relevante']} relevantes, {quality_stats['ambiguo']} ambiguos, {quality_stats['irrelevante']} irrelevantes")
+        logger.info(
+            f"✅ {brand.upper()}: {quality_stats['relevante']} relevantes, {quality_stats['ambiguo']} ambiguos, {quality_stats['irrelevante']} irrelevantes"
+        )
 
         labeled_training_docs.append(labeled_doc)
 
@@ -323,12 +338,23 @@ def enhanced_chroma_pipeline():
     logger.info("-" * 50)
 
     storage_result = chroma_manager.store_documents(labeled_training_docs)
-    logger.info(f"✅ Datos de entrenamiento etiquetados almacenados: {storage_result['chunks_stored']} chunks")
+    logger.info(
+        f"✅ Datos de entrenamiento etiquetados almacenados: {storage_result['chunks_stored']} chunks"
+    )
 
     # Verificar que se guardaron las etiquetas
-    total_relevant = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "relevante"]) for doc in labeled_training_docs)
-    total_ambiguous = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "ambiguo"]) for doc in labeled_training_docs)
-    total_irrelevant = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "irrelevante"]) for doc in labeled_training_docs)
+    total_relevant = sum(
+        len([c for c in doc["chunks"] if c.get("chunk_quality") == "relevante"])
+        for doc in labeled_training_docs
+    )
+    total_ambiguous = sum(
+        len([c for c in doc["chunks"] if c.get("chunk_quality") == "ambiguo"])
+        for doc in labeled_training_docs
+    )
+    total_irrelevant = sum(
+        len([c for c in doc["chunks"] if c.get("chunk_quality") == "irrelevante"])
+        for doc in labeled_training_docs
+    )
 
     logger.info(f"🔍 Etiquetas guardadas en ChromaDB:")
     logger.info(f"   🎯 Relevantes: {total_relevant} chunks")
@@ -338,8 +364,7 @@ def enhanced_chroma_pipeline():
     # PASO 6: Procesar documentos nuevos (data/new/*)
     new_data_dir = DATA_DIR / "new"
     new_docs = process_documents_from_directory(
-        processor, embedding_generator,
-        new_data_dir, "DOCUMENTOS NUEVOS"
+        processor, embedding_generator, new_data_dir, "DOCUMENTOS NUEVOS"
     )
 
     # PASO 7: Clasificar documentos nuevos (si hay clasificador y documentos)
@@ -351,12 +376,23 @@ def enhanced_chroma_pipeline():
         logger.info("-" * 50)
 
         storage_result_new = chroma_manager.store_documents(classified_new_docs)
-        logger.info(f"✅ Documentos nuevos almacenados: {storage_result_new['chunks_stored']} chunks")
+        logger.info(
+            f"✅ Documentos nuevos almacenados: {storage_result_new['chunks_stored']} chunks"
+        )
 
         # Verificar etiquetas de documentos nuevos
-        new_relevant = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "relevante"]) for doc in classified_new_docs)
-        new_ambiguous = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "ambiguo"]) for doc in classified_new_docs)
-        new_irrelevant = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "irrelevante"]) for doc in classified_new_docs)
+        new_relevant = sum(
+            len([c for c in doc["chunks"] if c.get("chunk_quality") == "relevante"])
+            for doc in classified_new_docs
+        )
+        new_ambiguous = sum(
+            len([c for c in doc["chunks"] if c.get("chunk_quality") == "ambiguo"])
+            for doc in classified_new_docs
+        )
+        new_irrelevant = sum(
+            len([c for c in doc["chunks"] if c.get("chunk_quality") == "irrelevante"])
+            for doc in classified_new_docs
+        )
 
         logger.info(f"🔍 Documentos nuevos - Etiquetas guardadas:")
         logger.info(f"   🎯 Relevantes: {new_relevant} chunks")
@@ -367,7 +403,9 @@ def enhanced_chroma_pipeline():
         logger.info("\n⚠️ Documentos nuevos encontrados pero sin clasificador")
         logger.info("💡 Almacenando sin clasificar...")
         storage_result_new = chroma_manager.store_documents(new_docs)
-        logger.info(f"✅ Documentos almacenados: {storage_result_new['chunks_stored']} chunks")
+        logger.info(
+            f"✅ Documentos almacenados: {storage_result_new['chunks_stored']} chunks"
+        )
 
     else:
         logger.info(f"\n📄 No se encontraron documentos nuevos en {new_data_dir}")
@@ -382,7 +420,9 @@ def enhanced_chroma_pipeline():
     logger.info(f"⏱️ Tiempo total: {total_time:.1f} segundos")
     logger.info(f"📚 Documentos de entrenamiento: {len(training_docs)}")
     logger.info(f"📄 Documentos nuevos: {len(new_docs) if new_docs else 0}")
-    logger.info(f"🤖 Clasificador: {'✅ Entrenado' if classifier else '❌ No disponible'}")
+    logger.info(
+        f"🤖 Clasificador: {'✅ Entrenado' if classifier else '❌ No disponible'}"
+    )
     logger.info(f"💾 Total en ChromaDB: {final_stats.get('total_documents', 0)} chunks")
     logger.info(f"📦 Chunks de entrenamiento: {storage_result['chunks_stored']}")
     logger.info(f"📦 Chunks nuevos: {storage_result_new['chunks_stored']}")
@@ -394,17 +434,20 @@ def enhanced_chroma_pipeline():
     try:
         # Buscar chunks relevantes directamente en ChromaDB
         relevant_test = chroma_manager.collection.get(
-            where={"chunk_quality": "relevante"},
-            limit=5
+            where={"chunk_quality": "relevante"}, limit=5
         )
 
         relevant_found = len(relevant_test["ids"]) if relevant_test["ids"] else 0
         logger.info(f"✅ Chunks relevantes encontrados en ChromaDB: {relevant_found}")
 
         if relevant_found > 0:
-            logger.info("🎯 ¡Sistema listo! Las búsquedas priorizarán chunks relevantes.")
+            logger.info(
+                "🎯 ¡Sistema listo! Las búsquedas priorizarán chunks relevantes."
+            )
         else:
-            logger.warning("⚠️ No se encontraron chunks relevantes. Verificar etiquetado.")
+            logger.warning(
+                "⚠️ No se encontraron chunks relevantes. Verificar etiquetado."
+            )
 
     except Exception as e:
         logger.warning(f"⚠️ Error verificando chunks relevantes: {e}")
@@ -414,7 +457,7 @@ def enhanced_chroma_pipeline():
         "classifier": classifier,
         "training_docs": len(training_docs),
         "new_docs": len(new_docs) if new_docs else 0,
-        "total_chunks": final_stats.get('total_documents', 0)
+        "total_chunks": final_stats.get("total_documents", 0),
     }
 
 
@@ -435,7 +478,7 @@ def demo_search_interface(chroma_manager):
             print("\n" + "-" * 60)
             query = input("🔍 Ingresa tu consulta (o 'quit' para salir): ").strip()
 
-            if query.lower() in ['quit', 'exit', 'salir', 'q']:
+            if query.lower() in ["quit", "exit", "salir", "q"]:
                 break
 
             if not query:
@@ -452,11 +495,11 @@ def demo_search_interface(chroma_manager):
                 continue
 
             for i, result in enumerate(results, 1):
-                similarity = result['similarity_score']
-                text = result['text']  # TEXTO COMPLETO (sin truncar)
-                brand = result['metadata'].get('brand', 'unknown').upper()
-                doc_name = result['metadata'].get('document_name', 'unknown')
-                priority = result.get('priority', '⚪ SIN_CLASIFICAR')
+                similarity = result["similarity_score"]
+                text = result["text"]  # TEXTO COMPLETO (sin truncar)
+                brand = result["metadata"].get("brand", "unknown").upper()
+                doc_name = result["metadata"].get("document_name", "unknown")
+                priority = result.get("priority", "⚪ SIN_CLASIFICAR")
 
                 # Interpretación de similitud
                 if similarity >= 0.5:
@@ -503,9 +546,11 @@ def demo_search_interface(chroma_manager):
                 print("-" * 80)
 
             # Resumen de la búsqueda
-            total_relevant = sum(1 for r in results if "RELEVANTE" in r.get('priority', ''))
+            total_relevant = sum(
+                1 for r in results if "RELEVANTE" in r.get("priority", "")
+            )
             total_results = len(results)
-            avg_similarity = sum(r['similarity_score'] for r in results) / len(results)
+            avg_similarity = sum(r["similarity_score"] for r in results) / len(results)
 
             print(f"\n📊 RESUMEN DE BÚSQUEDA:")
             print(f"   📈 Similitud promedio: {avg_similarity:.3f}")
@@ -517,8 +562,12 @@ def demo_search_interface(chroma_manager):
                 print(f"\n💡 SUGERENCIA:")
                 print(f"   Las similitudes son bajas. Intenta:")
                 print(f"   • Usar palabras más específicas del dominio de smartwatches")
-                print(f"   • Consultas más técnicas como 'battery life', 'heart rate', 'GPS'")
-                print(f"   • Frases en inglés (los manuales pueden tener más contenido en inglés)")
+                print(
+                    f"   • Consultas más técnicas como 'battery life', 'heart rate', 'GPS'"
+                )
+                print(
+                    f"   • Frases en inglés (los manuales pueden tener más contenido en inglés)"
+                )
 
         except KeyboardInterrupt:
             break
@@ -537,8 +586,12 @@ def main():
             logger.info("🎯 Pipeline completado exitosamente!")
 
             # Demo de búsqueda opcional
-            response = input("\n¿Quieres probar el sistema de búsqueda? (y/n): ").strip().lower()
-            if response in ['y', 'yes', 's', 'si']:
+            response = (
+                input("\n¿Quieres probar el sistema de búsqueda? (y/n): ")
+                .strip()
+                .lower()
+            )
+            if response in ["y", "yes", "s", "si"]:
                 demo_search_interface(results["chroma_manager"])
         else:
             logger.error("❌ Pipeline falló")
@@ -550,4 +603,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

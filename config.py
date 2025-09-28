@@ -2,6 +2,7 @@
 Configuración actualizada CON integración Chroma DB
 Reemplaza tu config.py actual
 """
+
 import os
 from pathlib import Path
 
@@ -34,7 +35,7 @@ CHROMA_COLLECTION_NAME = "smartwatch_docs"
 
 # Configuración de almacenamiento en Chroma
 CHROMA_BATCH_SIZE = 100  # Chunks por lote al almacenar
-CHROMA_MAX_RETRIES = 3   # Reintentos en caso de error
+CHROMA_MAX_RETRIES = 3  # Reintentos en caso de error
 
 # ========================================
 # CONFIGURACIÓN EXISTENTE
@@ -71,7 +72,7 @@ ANOMALY_CONTAMINATION = 0.1  # Porcentaje esperado de anomalías
 
 # Búsqueda semántica
 DEFAULT_SEARCH_RESULTS = 5  # Número default de resultados
-MAX_SEARCH_RESULTS = 20     # Máximo permitido
+MAX_SEARCH_RESULTS = 20  # Máximo permitido
 
 # ========================================
 # CREAR DIRECTORIOS

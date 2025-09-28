@@ -1,6 +1,7 @@
 """
 Procesador de documentos para el pipeline de ingesta
 """
+
 import PyPDF2
 import re
 from pathlib import Path
@@ -29,7 +30,7 @@ class DocumentProcessor:
             Dict con metadatos y contenido procesado
         """
         try:
-            with open(file_path, 'rb') as file:
+            with open(file_path, "rb") as file:
                 pdf_reader = PyPDF2.PdfReader(file)
 
                 # Extraer texto de todas las páginas
@@ -44,7 +45,9 @@ class DocumentProcessor:
                 chunks = self._create_chunks(text_content)
 
                 # Generar metadatos
-                metadata = self._generate_metadata(file_path, len(pdf_reader.pages), len(chunks))
+                metadata = self._generate_metadata(
+                    file_path, len(pdf_reader.pages), len(chunks)
+                )
 
                 return {
                     "metadata": metadata,
@@ -67,7 +70,7 @@ class DocumentProcessor:
             Dict con metadatos y contenido procesado
         """
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
+            with open(file_path, "r", encoding="utf-8") as file:
                 text_content = file.read()
 
             # Limpiar texto
@@ -114,8 +117,8 @@ class DocumentProcessor:
         words = text.split()
 
         for i in range(0, len(words), self.chunk_size - self.chunk_overlap):
-            chunk_words = words[i:i + self.chunk_size]
-            chunk_text = ' '.join(chunk_words)
+            chunk_words = words[i : i + self.chunk_size]
+            chunk_text = " ".join(chunk_words)
 
             # Generar ID único para el chunk
             chunk_id = hashlib.md5(chunk_text.encode()).hexdigest()[:16]
@@ -126,14 +129,16 @@ class DocumentProcessor:
                 "chunk_index": len(chunks),
                 "word_count": len(chunk_words),
                 "start_position": i,
-                "end_position": min(i + self.chunk_size, len(words))
+                "end_position": min(i + self.chunk_size, len(words)),
             }
 
             chunks.append(chunk_data)
 
         return chunks
 
-    def _generate_metadata(self, file_path: Path, num_pages: int = None, num_chunks: int = 0) -> Dict[str, Any]:
+    def _generate_metadata(
+        self, file_path: Path, num_pages: int = None, num_chunks: int = 0
+    ) -> Dict[str, Any]:
         """
         Genera metadatos para el documento
 
@@ -161,7 +166,7 @@ class DocumentProcessor:
             "document_type": self._classify_document_type(file_path.name),
             "num_pages": num_pages,
             "num_chunks": num_chunks,
-            "processed_timestamp": pd.Timestamp.now().isoformat()
+            "processed_timestamp": pd.Timestamp.now().isoformat(),
         }
 
         return metadata

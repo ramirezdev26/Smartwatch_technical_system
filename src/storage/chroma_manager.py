@@ -2,6 +2,7 @@
 ChromaManager - Maneja todas las operaciones con Chroma DB
 Fase 1: Almacenamiento e integración con el pipeline existente
 """
+
 import chromadb
 from typing import List, Dict, Any, Optional
 from loguru import logger
@@ -13,7 +14,12 @@ from pathlib import Path
 class ChromaManager:
     """Gestor de base de datos vectorial Chroma para smartwatch docs"""
 
-    def __init__(self, host: str = "localhost", port: int = 8000, collection_name: str = "smartwatch_docs"):
+    def __init__(
+        self,
+        host: str = "localhost",
+        port: int = 8000,
+        collection_name: str = "smartwatch_docs",
+    ):
         self.host = host
         self.port = port
         self.collection_name = collection_name
@@ -41,7 +47,9 @@ class ChromaManager:
         except Exception as e:
             logger.error(f"❌ Error conectando a Chroma DB: {e}")
             logger.error("💡 Asegúrate de que el contenedor Docker esté corriendo:")
-            logger.error("   docker run -v ./chroma-data:/data -p 8000:8000 chromadb/chroma")
+            logger.error(
+                "   docker run -v ./chroma-data:/data -p 8000:8000 chromadb/chroma"
+            )
             raise
 
     def _setup_collection(self):
@@ -52,7 +60,9 @@ class ChromaManager:
 
             # Verificar contenido existente
             count = self.collection.count()
-            logger.info(f"📚 Colección '{self.collection_name}' encontrada con {count} documentos")
+            logger.info(
+                f"📚 Colección '{self.collection_name}' encontrada con {count} documentos"
+            )
 
         except Exception:
             # Crear nueva colección si no existe
@@ -64,8 +74,8 @@ class ChromaManager:
                     "description": "Smartwatch technical documentation embeddings",
                     "embedding_model": "all-MiniLM-L6-v1",
                     "embedding_dimension": 384,
-                    "created_by": "smartwatch_knowledge_system"
-                }
+                    "created_by": "smartwatch_knowledge_system",
+                },
             )
             logger.info(f"✅ Colección '{self.collection_name}' creada exitosamente")
 
@@ -93,7 +103,9 @@ class ChromaManager:
             doc_metadata = doc["metadata"]
             chunks = doc["chunks"]
 
-            logger.info(f"📄 Procesando {doc_metadata['file_name']}: {len(chunks)} chunks")
+            logger.info(
+                f"📄 Procesando {doc_metadata['file_name']}: {len(chunks)} chunks"
+            )
 
             for i, chunk in enumerate(chunks):
                 # Crear ID único
@@ -111,10 +123,12 @@ class ChromaManager:
                     "processing_timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                     "total_chunks_in_doc": len(chunks),
                     "embedding_model": chunk.get("embedding_model", "all-MiniLM-L6-v1"),
-                    "embedding_dimension": len(chunk["embedding"])
+                    "embedding_dimension": len(chunk["embedding"]),
                 }
                 if "quality_analysis" in doc_metadata:
-                    enriched_metadata["document_quality"] = doc_metadata["quality_analysis"]["document_quality"]
+                    enriched_metadata["document_quality"] = doc_metadata[
+                        "quality_analysis"
+                    ]["document_quality"]
 
                 chunk_quality = None
 
@@ -129,8 +143,9 @@ class ChromaManager:
                 # Guardar calidad del chunk si existe
                 if chunk_quality:
                     enriched_metadata["chunk_quality"] = chunk_quality
-                    enriched_metadata["quality_confidence"] = chunk.get("quality_confidence",
-                                                                        chunk.get("auto_confidence", 0.0))
+                    enriched_metadata["quality_confidence"] = chunk.get(
+                        "quality_confidence", chunk.get("auto_confidence", 0.0)
+                    )
 
                 # Agregar a listas
                 all_ids.append(chunk_id)
@@ -157,11 +172,13 @@ class ChromaManager:
                     ids=batch_ids,
                     embeddings=batch_embeddings,
                     documents=batch_documents,
-                    metadatas=batch_metadatas
+                    metadatas=batch_metadatas,
                 )
 
                 stored_count += len(batch_ids)
-                logger.info(f"   💾 Lote {i // batch_size + 1}: {len(batch_ids)} chunks almacenados")
+                logger.info(
+                    f"   💾 Lote {i // batch_size + 1}: {len(batch_ids)} chunks almacenados"
+                )
 
             except Exception as e:
                 logger.error(f"❌ Error almacenando lote {i // batch_size + 1}: {e}")
@@ -176,14 +193,16 @@ class ChromaManager:
         logger.info(f"   📦 Chunks almacenados: {stored_count}")
         logger.info(f"   📚 Total en colección: {final_count}")
         logger.info(f"   ⏱️ Tiempo: {storage_time:.2f} segundos")
-        logger.info(f"   ⚡ Velocidad: {stored_count / storage_time:.1f} chunks/segundo")
+        logger.info(
+            f"   ⚡ Velocidad: {stored_count / storage_time:.1f} chunks/segundo"
+        )
 
         return {
             "chunks_stored": stored_count,
             "total_in_collection": final_count,
             "storage_time": storage_time,
             "storage_rate": stored_count / storage_time,
-            "success": True
+            "success": True,
         }
 
     def _generate_chunk_id(self, doc_metadata: Dict[str, Any], chunk_index: int) -> str:
@@ -199,8 +218,13 @@ class ChromaManager:
 
         return chunk_id
 
-    def search(self, query: str, top_k: int = 5, brand_filter: str = None, prioritize_relevant: bool = True) -> List[
-        Dict[str, Any]]:
+    def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        brand_filter: str = None,
+        prioritize_relevant: bool = True,
+    ) -> List[Dict[str, Any]]:
         """
         Realiza búsqueda semántica en Chroma con priorización de chunks relevantes
 
@@ -216,7 +240,9 @@ class ChromaManager:
         if not self.collection:
             raise ValueError("❌ No hay conexión a Chroma DB")
 
-        logger.info(f"🔍 Buscando en Chroma: '{query}' (prioridad: {'relevantes' if prioritize_relevant else 'todos'})")
+        logger.info(
+            f"🔍 Buscando en Chroma: '{query}' (prioridad: {'relevantes' if prioritize_relevant else 'todos'})"
+        )
         start_time = time.time()
 
         # Preparar filtros base
@@ -237,7 +263,7 @@ class ChromaManager:
                     query_texts=[query],
                     n_results=min(top_k * 2, 20),  # Buscar más para tener opciones
                     where=relevant_filter if relevant_filter else None,
-                    include=["documents", "metadatas", "distances"]
+                    include=["documents", "metadatas", "distances"],
                 )
 
                 # Procesar resultados relevantes
@@ -249,7 +275,7 @@ class ChromaManager:
                             "distance": relevant_results["distances"][0][i],
                             "similarity_score": 1 - relevant_results["distances"][0][i],
                             "ranking": len(processed_results) + 1,
-                            "priority": "🎯 RELEVANTE"
+                            "priority": "🎯 RELEVANTE",
                         }
                         processed_results.append(result)
 
@@ -257,14 +283,18 @@ class ChromaManager:
                 remaining_needed = top_k - len(processed_results)
 
                 if remaining_needed > 0:
-                    logger.info(f"🔍 Buscando {remaining_needed} resultados adicionales en todos los chunks...")
+                    logger.info(
+                        f"🔍 Buscando {remaining_needed} resultados adicionales en todos los chunks..."
+                    )
 
                     # Buscar en todos (sin filtro de calidad)
                     all_results = self.collection.query(
                         query_texts=[query],
-                        n_results=min(top_k * 3, 30),  # Buscar más para filtrar duplicados
+                        n_results=min(
+                            top_k * 3, 30
+                        ),  # Buscar más para filtrar duplicados
                         where=base_filter if base_filter else None,
-                        include=["documents", "metadatas", "distances"]
+                        include=["documents", "metadatas", "distances"],
                     )
 
                     # Agregar resultados no duplicados
@@ -284,7 +314,9 @@ class ChromaManager:
                             # Evitar duplicados
                             if text_hash not in existing_ids:
                                 metadata = all_results["metadatas"][0][i]
-                                quality = metadata.get("chunk_quality", "sin_clasificar")
+                                quality = metadata.get(
+                                    "chunk_quality", "sin_clasificar"
+                                )
 
                                 # Marcar prioridad según calidad
                                 if quality == "relevante":
@@ -300,9 +332,10 @@ class ChromaManager:
                                     "text": text,
                                     "metadata": metadata,
                                     "distance": all_results["distances"][0][i],
-                                    "similarity_score": 1 - all_results["distances"][0][i],
+                                    "similarity_score": 1
+                                    - all_results["distances"][0][i],
                                     "ranking": len(processed_results) + 1,
-                                    "priority": priority
+                                    "priority": priority,
                                 }
                                 processed_results.append(result)
                                 existing_ids.add(text_hash)
@@ -314,7 +347,7 @@ class ChromaManager:
                     query_texts=[query],
                     n_results=top_k,
                     where=base_filter if base_filter else None,
-                    include=["documents", "metadatas", "distances"]
+                    include=["documents", "metadatas", "distances"],
                 )
 
                 if results["documents"] and results["documents"][0]:
@@ -337,7 +370,7 @@ class ChromaManager:
                             "distance": results["distances"][0][i],
                             "similarity_score": 1 - results["distances"][0][i],
                             "ranking": i + 1,
-                            "priority": priority
+                            "priority": priority,
                         }
                         processed_results.append(result)
 
@@ -350,7 +383,9 @@ class ChromaManager:
             for i, result in enumerate(final_results):
                 result["ranking"] = i + 1
 
-            logger.info(f"✅ Búsqueda completada en {search_time:.3f}s: {len(final_results)} resultados")
+            logger.info(
+                f"✅ Búsqueda completada en {search_time:.3f}s: {len(final_results)} resultados"
+            )
 
             # Log de distribución de calidad
             quality_count = {}
@@ -391,7 +426,7 @@ class ChromaManager:
                 "total_documents": count,
                 "collection_name": self.collection_name,
                 "brands_sample": brands,
-                "status": "connected"
+                "status": "connected",
             }
 
         except Exception as e:

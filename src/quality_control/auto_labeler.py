@@ -2,6 +2,7 @@
 Auto-Labeler SIMPLIFICADO para aprender ML básico
 Reglas simples y comprensibles para etiquetar chunks
 """
+
 from typing import List, Dict, Any, Tuple
 from loguru import logger
 
@@ -12,19 +13,44 @@ class SimpleAutoLabeler:
     def __init__(self):
         # Palabras técnicas que indican contenido RELEVANTE
         self.good_words = [
-            'battery', 'charge', 'charging', 'power',
-            'settings', 'configure', 'setup',
-            'problem', 'fix', 'troubleshoot', 'solve',
-            'press', 'tap', 'select', 'click',
-            'watch', 'device', 'screen', 'button',
-            'heart rate', 'sleep', 'fitness', 'gps'
+            "battery",
+            "charge",
+            "charging",
+            "power",
+            "settings",
+            "configure",
+            "setup",
+            "problem",
+            "fix",
+            "troubleshoot",
+            "solve",
+            "press",
+            "tap",
+            "select",
+            "click",
+            "watch",
+            "device",
+            "screen",
+            "button",
+            "heart rate",
+            "sleep",
+            "fitness",
+            "gps",
         ]
 
         # Palabras que indican contenido IRRELEVANTE
         self.bad_words = [
-            'page', 'copyright', 'reserved', 'trademark',
-            'chapter', 'section', 'contents', 'index',
-            'version', 'revision', 'document'
+            "page",
+            "copyright",
+            "reserved",
+            "trademark",
+            "chapter",
+            "section",
+            "contents",
+            "index",
+            "version",
+            "revision",
+            "document",
         ]
 
     def auto_label_chunks(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -56,9 +82,15 @@ class SimpleAutoLabeler:
         # Mostrar estadísticas finales
         total = len(chunks)
         logger.info(f"✅ Etiquetado SIMPLE completado:")
-        logger.info(f"   🟢 Relevante: {stats['relevante']} ({stats['relevante'] / total * 100:.1f}%)")
-        logger.info(f"   🔴 Irrelevante: {stats['irrelevante']} ({stats['irrelevante'] / total * 100:.1f}%)")
-        logger.info(f"   🟡 Ambiguo: {stats['ambiguo']} ({stats['ambiguo'] / total * 100:.1f}%)")
+        logger.info(
+            f"   🟢 Relevante: {stats['relevante']} ({stats['relevante'] / total * 100:.1f}%)"
+        )
+        logger.info(
+            f"   🔴 Irrelevante: {stats['irrelevante']} ({stats['irrelevante'] / total * 100:.1f}%)"
+        )
+        logger.info(
+            f"   🟡 Ambiguo: {stats['ambiguo']} ({stats['ambiguo'] / total * 100:.1f}%)"
+        )
 
         return labeled_chunks
 
@@ -83,16 +115,20 @@ class SimpleAutoLabeler:
             return "irrelevante", 0.9, f"Muy corto ({word_count} palabras)"
 
         # === REGLA 2: Si solo tiene números, probablemente es una página ===
-        if text.replace(' ', '').isdigit():
+        if text.replace(" ", "").isdigit():
             return "irrelevante", 0.95, "Solo contiene números"
 
         # === REGLA 3: Palabras irrelevantes obvias ===
         bad_word_count = sum(1 for word in self.bad_words if word in text_lower)
         if bad_word_count >= 2:
-            return "irrelevante", 0.8, f"Contiene {bad_word_count} palabras irrelevantes"
+            return (
+                "irrelevante",
+                0.8,
+                f"Contiene {bad_word_count} palabras irrelevantes",
+            )
 
         # === REGLA 4: Una sola palabra irrelevante fuerte ===
-        strong_bad_words = ['copyright', 'page', 'chapter']
+        strong_bad_words = ["copyright", "page", "chapter"]
         for bad_word in strong_bad_words:
             if bad_word in text_lower:
                 return "irrelevante", 0.85, f"Contiene '{bad_word}'"
@@ -104,13 +140,21 @@ class SimpleAutoLabeler:
 
         # === REGLA 6: Texto largo con algunas palabras técnicas ===
         if word_count > 30 and good_word_count >= 1:
-            return "relevante", 0.7, f"Texto largo ({word_count} palabras) con contenido técnico"
+            return (
+                "relevante",
+                0.7,
+                f"Texto largo ({word_count} palabras) con contenido técnico",
+            )
 
         # === REGLA 7: Instrucciones típicas ===
-        instruction_words = ['press', 'tap', 'go to', 'select', 'if', 'when']
+        instruction_words = ["press", "tap", "go to", "select", "if", "when"]
         instruction_count = sum(1 for word in instruction_words if word in text_lower)
         if instruction_count >= 2:
-            return "relevante", 0.75, f"Contiene {instruction_count} palabras de instrucción"
+            return (
+                "relevante",
+                0.75,
+                f"Contiene {instruction_count} palabras de instrucción",
+            )
 
         # === REGLA 8: Posición en el documento ===
         chunk_index = metadata.get("chunk_index", 0)
@@ -140,7 +184,7 @@ class SimpleAutoLabeler:
             "Regla 7 - Instrucciones": "Si tiene 2+ palabras como 'press', 'tap', 'if' → RELEVANTE",
             "Regla 8 - Posición": "Chunks al inicio sin palabras técnicas → AMBIGUO",
             "Regla 9 - Texto mediano": "10-100 palabras con algo técnico → RELEVANTE",
-            "Regla Default": "Si no cumple ninguna regla → AMBIGUO"
+            "Regla Default": "Si no cumple ninguna regla → AMBIGUO",
         }
 
     def analyze_labeling_results(self, labeled_chunks: List[Dict[str, Any]]) -> None:
@@ -165,18 +209,26 @@ class SimpleAutoLabeler:
         # Ejemplos por categoría
         logger.info(f"\n📋 EJEMPLOS POR CATEGORÍA:")
         for label in ["relevante", "irrelevante", "ambiguo"]:
-            examples = [chunk for chunk in labeled_chunks if chunk["auto_label"] == label]
+            examples = [
+                chunk for chunk in labeled_chunks if chunk["auto_label"] == label
+            ]
             if examples:
                 # Tomar ejemplos de alta confianza
-                high_conf_examples = sorted(examples, key=lambda x: x["auto_confidence"], reverse=True)[:3]
+                high_conf_examples = sorted(
+                    examples, key=lambda x: x["auto_confidence"], reverse=True
+                )[:3]
 
                 logger.info(f"\n🏷️ EJEMPLOS '{label.upper()}':")
                 for i, ex in enumerate(high_conf_examples, 1):
-                    text_preview = ex["text"][:60] + "..." if len(ex["text"]) > 60 else ex["text"]
+                    text_preview = (
+                        ex["text"][:60] + "..." if len(ex["text"]) > 60 else ex["text"]
+                    )
                     confidence = ex["auto_confidence"]
                     reason = ex["auto_reason"]
 
-                    logger.info(f"   {i}. Confianza: {confidence:.2f} | Razón: {reason}")
+                    logger.info(
+                        f"   {i}. Confianza: {confidence:.2f} | Razón: {reason}"
+                    )
                     logger.info(f"      Texto: {text_preview}")
 
     def get_simple_stats(self, labeled_chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -185,7 +237,7 @@ class SimpleAutoLabeler:
             "total_chunks": len(labeled_chunks),
             "by_label": {},
             "high_confidence": 0,
-            "avg_confidence": 0
+            "avg_confidence": 0,
         }
 
         # Por label
@@ -193,7 +245,7 @@ class SimpleAutoLabeler:
             chunks_with_label = [c for c in labeled_chunks if c["auto_label"] == label]
             stats["by_label"][label] = {
                 "count": len(chunks_with_label),
-                "percentage": len(chunks_with_label) / len(labeled_chunks) * 100
+                "percentage": len(chunks_with_label) / len(labeled_chunks) * 100,
             }
 
         # Confianza
