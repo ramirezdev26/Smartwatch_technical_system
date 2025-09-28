@@ -163,3 +163,48 @@ Fase 2: Control de Calidad (Para midterm)
 Fase 3: Interfaz y Visualización (Post-midterm)
 - Streamlit app básica
 - Clustering y visualización
+
+## 🎯 Para la Presentación Midterm
+
+### Demo Sugerido:
+1. **Mostrar pipeline funcionando** con logs en tiempo real
+2. **Agregar documento nuevo** en `data/new/` durante la demo
+3. **Ejecutar búsquedas** con diferentes consultas:
+   - `"apple watch battery life"`
+   - `"heart rate monitoring"`
+   - `"GPS accuracy"`
+4. **Explicar resultados** y priorización de chunks relevantes
+
+### Preparación Pre-Demo:
+```bash
+# 1. Ejecutar una vez para entrenar el sistema
+python main.py
+
+# 2. Preparar documento nuevo para agregar en vivo
+cp data/raw/samsung/manual.pdf demo_new_document.pdf
+
+# 3. Durante demo: agregar el documento
+cp demo_new_document.pdf data/new/samsung/
+python main.py  # Mostrar clasificación en tiempo real
+```
+
+---
+
+## 📚 Recursos Adicionales
+
+- **ChromaDB Docs**: https://docs.trychroma.com/
+- **Sentence Transformers**: https://www.sbert.net/
+- **Scikit-learn**: https://scikit-learn.org/
+
+---
+
+## 👥 Información del Proyecto
+
+**Curso:** CSDS-352 - Ciencia de Datos y Aprendizaje Automático  
+**Semestre:** 5to Semestre  
+**Tipo:** Proyecto Capstone  
+**Repositorio:** https://github.com/ramirezdev26/Smartwatch_technical_system
+
+---
+
+¿Problemas? Revisa los logs en `logs/system.log` o consulta la sección de solución de problemas arriba. 🚀
