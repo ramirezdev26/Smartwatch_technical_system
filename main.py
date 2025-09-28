@@ -184,6 +184,9 @@ def classify_new_documents(classifier, processed_docs):
                 doc_quality_stats[label] += 1
                 quality_stats[label] += 1
 
+                # IMPORTANTE: Agregar chunk_quality para búsquedas en ChromaDB
+                chunk["chunk_quality"] = label
+
             total_chunks = len(enhanced_chunks)
             relevant_ratio = doc_quality_stats["relevante"] / total_chunks if total_chunks > 0 else 0
 
@@ -284,12 +287,53 @@ def enhanced_chroma_pipeline():
     # PASO 4: Entrenar clasificador con datos de entrenamiento
     classifier = train_quality_classifier(training_docs)
 
-    # PASO 5: Almacenar datos de entrenamiento en ChromaDB
-    logger.info(f"\n💾 PASO 5: Almacenar Datos de Entrenamiento")
+    # PASO 4.5: Etiquetar datos de entrenamiento para almacenamiento
+    logger.info(f"\n🏷️ PASO 4.5: Etiquetar Datos de Entrenamiento para Almacenamiento")
     logger.info("-" * 50)
 
-    storage_result = chroma_manager.store_documents(training_docs)
-    logger.info(f"✅ Datos de entrenamiento almacenados: {storage_result['chunks_stored']} chunks")
+    # Importar el auto labeler
+    from src.quality_control.auto_labeler import SimpleAutoLabeler
+    auto_labeler = SimpleAutoLabeler()
+
+    # Etiquetar todos los chunks de entrenamiento
+    labeled_training_docs = []
+    for doc in training_docs:
+        labeled_doc = doc.copy()
+
+        # Etiquetar chunks del documento
+        logger.info(f"🏷️ Etiquetando: {doc['metadata']['file_name']}")
+        labeled_chunks = auto_labeler.auto_label_chunks(doc["chunks"])
+        labeled_doc["chunks"] = labeled_chunks
+
+        # Estadísticas del documento
+        quality_stats = {"relevante": 0, "ambiguo": 0, "irrelevante": 0}
+        for chunk in labeled_chunks:
+            label = chunk.get("auto_label", "ambiguo")
+            quality_stats[label] += 1
+            # Agregar el label como chunk_quality para búsquedas
+            chunk["chunk_quality"] = label
+
+        brand = doc["metadata"].get("brand", "unknown")
+        logger.info(f"✅ {brand.upper()}: {quality_stats['relevante']} relevantes, {quality_stats['ambiguo']} ambiguos, {quality_stats['irrelevante']} irrelevantes")
+
+        labeled_training_docs.append(labeled_doc)
+
+    # PASO 5: Almacenar datos de entrenamiento ETIQUETADOS en ChromaDB
+    logger.info(f"\n💾 PASO 5: Almacenar Datos de Entrenamiento Etiquetados")
+    logger.info("-" * 50)
+
+    storage_result = chroma_manager.store_documents(labeled_training_docs)
+    logger.info(f"✅ Datos de entrenamiento etiquetados almacenados: {storage_result['chunks_stored']} chunks")
+
+    # Verificar que se guardaron las etiquetas
+    total_relevant = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "relevante"]) for doc in labeled_training_docs)
+    total_ambiguous = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "ambiguo"]) for doc in labeled_training_docs)
+    total_irrelevant = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "irrelevante"]) for doc in labeled_training_docs)
+
+    logger.info(f"🔍 Etiquetas guardadas en ChromaDB:")
+    logger.info(f"   🎯 Relevantes: {total_relevant} chunks")
+    logger.info(f"   🟡 Ambiguos: {total_ambiguous} chunks")
+    logger.info(f"   🔴 Irrelevantes: {total_irrelevant} chunks")
 
     # PASO 6: Procesar documentos nuevos (data/new/*)
     new_data_dir = DATA_DIR / "new"
@@ -308,6 +352,16 @@ def enhanced_chroma_pipeline():
 
         storage_result_new = chroma_manager.store_documents(classified_new_docs)
         logger.info(f"✅ Documentos nuevos almacenados: {storage_result_new['chunks_stored']} chunks")
+
+        # Verificar etiquetas de documentos nuevos
+        new_relevant = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "relevante"]) for doc in classified_new_docs)
+        new_ambiguous = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "ambiguo"]) for doc in classified_new_docs)
+        new_irrelevant = sum(len([c for c in doc["chunks"] if c.get("chunk_quality") == "irrelevante"]) for doc in classified_new_docs)
+
+        logger.info(f"🔍 Documentos nuevos - Etiquetas guardadas:")
+        logger.info(f"   🎯 Relevantes: {new_relevant} chunks")
+        logger.info(f"   🟡 Ambiguos: {new_ambiguous} chunks")
+        logger.info(f"   🔴 Irrelevantes: {new_irrelevant} chunks")
 
     elif new_docs:
         logger.info("\n⚠️ Documentos nuevos encontrados pero sin clasificador")
@@ -332,6 +386,28 @@ def enhanced_chroma_pipeline():
     logger.info(f"💾 Total en ChromaDB: {final_stats.get('total_documents', 0)} chunks")
     logger.info(f"📦 Chunks de entrenamiento: {storage_result['chunks_stored']}")
     logger.info(f"📦 Chunks nuevos: {storage_result_new['chunks_stored']}")
+
+    # Verificación final: ¿Puede el sistema encontrar chunks relevantes?
+    logger.info(f"\n🔍 === VERIFICACIÓN FINAL ===")
+    logger.info("Probando si el sistema puede encontrar chunks relevantes...")
+
+    try:
+        # Buscar chunks relevantes directamente en ChromaDB
+        relevant_test = chroma_manager.collection.get(
+            where={"chunk_quality": "relevante"},
+            limit=5
+        )
+
+        relevant_found = len(relevant_test["ids"]) if relevant_test["ids"] else 0
+        logger.info(f"✅ Chunks relevantes encontrados en ChromaDB: {relevant_found}")
+
+        if relevant_found > 0:
+            logger.info("🎯 ¡Sistema listo! Las búsquedas priorizarán chunks relevantes.")
+        else:
+            logger.warning("⚠️ No se encontraron chunks relevantes. Verificar etiquetado.")
+
+    except Exception as e:
+        logger.warning(f"⚠️ Error verificando chunks relevantes: {e}")
 
     return {
         "chroma_manager": chroma_manager,
@@ -375,7 +451,6 @@ def demo_search_interface(chroma_manager):
                 print("❌ No se encontraron resultados")
                 continue
 
-            # Mostrar resultados con formato mejorado
             for i, result in enumerate(results, 1):
                 similarity = result['similarity_score']
                 text = result['text']  # TEXTO COMPLETO (sin truncar)
@@ -450,8 +525,6 @@ def demo_search_interface(chroma_manager):
         except Exception as e:
             print(f"❌ Error en búsqueda: {e}")
 
-    print("\n👋 Saliendo del demo de búsqueda...")
-    print("✨ ¡Gracias por probar el sistema!")
 
 def main():
     """Función principal"""
@@ -477,3 +550,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

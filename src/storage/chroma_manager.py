@@ -109,12 +109,28 @@ class ChromaManager:
                     "char_count": chunk.get("char_count", 0),
                     "document_type": doc_metadata.get("document_type", "pdf"),
                     "processing_timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-
-                    # Metadatos adicionales para búsqueda
                     "total_chunks_in_doc": len(chunks),
                     "embedding_model": chunk.get("embedding_model", "all-MiniLM-L6-v1"),
                     "embedding_dimension": len(chunk["embedding"])
                 }
+                if "quality_analysis" in doc_metadata:
+                    enriched_metadata["document_quality"] = doc_metadata["quality_analysis"]["document_quality"]
+
+                chunk_quality = None
+
+                # Buscar calidad del chunk en diferentes campos (por compatibilidad)
+                if "chunk_quality" in chunk:
+                    chunk_quality = chunk["chunk_quality"]
+                elif "quality_label" in chunk:
+                    chunk_quality = chunk["quality_label"]
+                elif "auto_label" in chunk:
+                    chunk_quality = chunk["auto_label"]
+
+                # Guardar calidad del chunk si existe
+                if chunk_quality:
+                    enriched_metadata["chunk_quality"] = chunk_quality
+                    enriched_metadata["quality_confidence"] = chunk.get("quality_confidence",
+                                                                        chunk.get("auto_confidence", 0.0))
 
                 # Agregar a listas
                 all_ids.append(chunk_id)
