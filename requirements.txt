@@ -3,7 +3,6 @@ joblib
 sentence-transformers>=2.3.0
 chromadb>=0.4.22
 PyPDF2>=3.0.1
-PyMuPDF==1.26.4
 
 # Machine Learning
 scikit-learn>=1.4.0
