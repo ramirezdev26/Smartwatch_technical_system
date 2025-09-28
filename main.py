@@ -343,12 +343,21 @@ def enhanced_chroma_pipeline():
 
 
 def demo_search_interface(chroma_manager):
-    """Demo de búsqueda para probar el sistema completo"""
-    logger.info("\n🔍 === DEMO DE BÚSQUEDA ===")
+    """Demo de búsqueda mejorado con texto completo y prioridades"""
+    logger.info("\n🔍 === DEMO DE BÚSQUEDA MEJORADO ===")
+    logger.info("🎯 Los chunks RELEVANTES aparecen primero")
+    logger.info("📝 Se muestra el texto completo de cada resultado")
+    print("\n" + "=" * 80)
+    print("🔍 SISTEMA DE BÚSQUEDA INTELIGENTE")
+    print("🎯 Prioridad: Resultados RELEVANTES primero")
+    print("❓ Similitud negativa = contenido muy diferente a tu consulta")
+    print("✨ Similitud alta (>0.3) = muy relacionado con tu consulta")
+    print("=" * 80)
 
     while True:
         try:
-            query = input("\n🔍 Ingresa tu consulta (o 'quit' para salir): ").strip()
+            print("\n" + "-" * 60)
+            query = input("🔍 Ingresa tu consulta (o 'quit' para salir): ").strip()
 
             if query.lower() in ['quit', 'exit', 'salir', 'q']:
                 break
@@ -356,34 +365,93 @@ def demo_search_interface(chroma_manager):
             if not query:
                 continue
 
-            # Realizar búsqueda
-            results = chroma_manager.search(query, top_k=3)
+            print(f"\n🔍 Buscando: '{query}'...")
+            print("=" * 80)
 
-            print(f"\n📋 Resultados para: '{query}'")
-            print("-" * 60)
+            # Realizar búsqueda con priorización
+            results = chroma_manager.search(query, top_k=5, prioritize_relevant=True)
 
             if not results:
                 print("❌ No se encontraron resultados")
                 continue
 
+            # Mostrar resultados con formato mejorado
             for i, result in enumerate(results, 1):
                 similarity = result['similarity_score']
-                text = result['text'][:150] + "..." if len(result['text']) > 150 else result['text']
+                text = result['text']  # TEXTO COMPLETO (sin truncar)
                 brand = result['metadata'].get('brand', 'unknown').upper()
                 doc_name = result['metadata'].get('document_name', 'unknown')
-                quality = result['metadata'].get('chunk_quality', 'sin_clasificar')
+                priority = result.get('priority', '⚪ SIN_CLASIFICAR')
 
-                print(f"\n{i}. [{brand}] {doc_name}")
-                print(f"   📊 Similitud: {similarity:.3f}")
-                if quality != 'sin_clasificar':
-                    print(f"   🔍 Calidad: {quality}")
-                print(f"   📝 {text}")
+                # Interpretación de similitud
+                if similarity >= 0.5:
+                    similarity_desc = "MUY RELACIONADO ✨"
+                elif similarity >= 0.3:
+                    similarity_desc = "RELACIONADO ✅"
+                elif similarity >= 0.0:
+                    similarity_desc = "ALGO RELACIONADO 🤔"
+                else:
+                    similarity_desc = "MUY DIFERENTE ❌"
+
+                print(f"\n📄 RESULTADO #{i}")
+                print(f"🏷️  {priority}")
+                print(f"🏢 Marca: {brand}")
+                print(f"📖 Documento: {doc_name}")
+                print(f"📊 Similitud: {similarity:.3f} - {similarity_desc}")
+                print(f"📝 Contenido:")
+                print("-" * 60)
+
+                # Mostrar texto completo con formato mejorado
+                # Dividir en líneas de máximo 80 caracteres para legibilidad
+                words = text.split()
+                lines = []
+                current_line = []
+                current_length = 0
+
+                for word in words:
+                    if current_length + len(word) + 1 > 78:  # 78 chars + 2 for indent
+                        if current_line:
+                            lines.append("  " + " ".join(current_line))
+                            current_line = [word]
+                            current_length = len(word)
+                    else:
+                        current_line.append(word)
+                        current_length += len(word) + 1
+
+                if current_line:
+                    lines.append("  " + " ".join(current_line))
+
+                # Imprimir con indentación
+                for line in lines:
+                    print(line)
+
+                print("-" * 80)
+
+            # Resumen de la búsqueda
+            total_relevant = sum(1 for r in results if "RELEVANTE" in r.get('priority', ''))
+            total_results = len(results)
+            avg_similarity = sum(r['similarity_score'] for r in results) / len(results)
+
+            print(f"\n📊 RESUMEN DE BÚSQUEDA:")
+            print(f"   📈 Similitud promedio: {avg_similarity:.3f}")
+            print(f"   🎯 Resultados relevantes: {total_relevant}/{total_results}")
+            print(f"   💡 Tip: Similitudes >0.3 suelen ser muy útiles")
+
+            # Sugerencia si todas las similitudes son muy bajas
+            if avg_similarity < 0.0:
+                print(f"\n💡 SUGERENCIA:")
+                print(f"   Las similitudes son bajas. Intenta:")
+                print(f"   • Usar palabras más específicas del dominio de smartwatches")
+                print(f"   • Consultas más técnicas como 'battery life', 'heart rate', 'GPS'")
+                print(f"   • Frases en inglés (los manuales pueden tener más contenido en inglés)")
 
         except KeyboardInterrupt:
             break
         except Exception as e:
             print(f"❌ Error en búsqueda: {e}")
 
+    print("\n👋 Saliendo del demo de búsqueda...")
+    print("✨ ¡Gracias por probar el sistema!")
 
 def main():
     """Función principal"""
