@@ -91,3 +91,22 @@ for brand in SUPPORTED_BRANDS:
 
 # Crear directorio de logs
 LOG_FILE.parent.mkdir(exist_ok=True)
+
+# Al final del archivo config.py existente, añade:
+
+# ========================================
+# CONFIGURACIÓN CLUSTERING (FASE 3)
+# ========================================
+
+# K-Means clustering
+MIN_CLUSTERS = 2  # Mínimo número de clusters
+MAX_CLUSTERS = 15  # Máximo número de clusters para búsqueda
+DEFAULT_N_CLUSTERS = 5  # Default si no se especifica
+CLUSTERING_METHOD = "silhouette"  # 'elbow' o 'silhouette'
+
+# Modelo de clustering
+CLUSTER_MODEL_PATH = PROJECT_ROOT / "models" / "cluster_model.joblib"
+
+# Visualización
+VISUALIZATION_PERPLEXITY = 30  # Para t-SNE
+VISUALIZATION_N_COMPONENTS = 2  # 2D o 3D
