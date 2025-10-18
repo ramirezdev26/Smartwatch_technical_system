@@ -223,11 +223,11 @@ class ChromaManager:
         return chunk_id
 
     def search(
-        self,
-        query: str,
-        top_k: int = 5,
-        brand_filter: str = None,
-        prioritize_relevant: bool = True,
+            self,
+            query: str,
+            top_k: int = 5,
+            brand_filter: str = None,
+            prioritize_relevant: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Realiza búsqueda semántica en Chroma con priorización de chunks relevantes
@@ -249,164 +249,150 @@ class ChromaManager:
         )
         start_time = time.time()
 
-        # Preparar filtros base
-        base_filter = {}
-        if brand_filter:
-            base_filter["brand"] = brand_filter.lower()
-
         processed_results = []
 
         try:
             if prioritize_relevant:
                 # PASO 1: Buscar primero en chunks RELEVANTES
-                relevant_filter = base_filter.copy()
-                relevant_filter["chunk_quality"] = "relevante"
-
                 logger.info("🎯 Buscando primero en chunks RELEVANTES...")
+
+                # ✅ CORREGIR: Construir filtro con operador $and
+                if brand_filter:
+                    relevant_filter = {
+                        "$and": [
+                            {"brand": brand_filter.lower()},
+                            {"chunk_quality": "relevante"}
+                        ]
+                    }
+                else:
+                    relevant_filter = {"chunk_quality": "relevante"}
+
                 relevant_results = self.collection.query(
                     query_texts=[query],
-                    n_results=min(top_k * 2, 20),  # Buscar más para tener opciones
-                    where=relevant_filter if relevant_filter else None,
+                    n_results=top_k,
+                    where=relevant_filter,
                     include=["documents", "metadatas", "distances"],
                 )
 
                 # Procesar resultados relevantes
-                if relevant_results["documents"] and relevant_results["documents"][0]:
-                    for i in range(len(relevant_results["documents"][0])):
-                        result = {
+                if relevant_results["ids"][0]:
+                    for i, doc_id in enumerate(relevant_results["ids"][0]):
+                        distance = relevant_results["distances"][0][i]
+                        similarity = 1 / (1 + distance)
+
+                        processed_results.append({
+                            "id": doc_id,
                             "text": relevant_results["documents"][0][i],
                             "metadata": relevant_results["metadatas"][0][i],
-                            "distance": relevant_results["distances"][0][i],
-                            "similarity_score": 1 - relevant_results["distances"][0][i],
-                            "ranking": len(processed_results) + 1,
-                            "priority": "🎯 RELEVANTE",
-                        }
-                        processed_results.append(result)
+                            "distance": distance,
+                            "similarity": similarity,
+                            "priority": "relevante",
+                        })
 
-                # PASO 2: Si necesitamos más resultados, buscar en el resto
-                remaining_needed = top_k - len(processed_results)
-
-                if remaining_needed > 0:
+                # PASO 2: Si no hay suficientes relevantes, buscar en otros
+                if len(processed_results) < top_k:
+                    remaining = top_k - len(processed_results)
                     logger.info(
-                        f"🔍 Buscando {remaining_needed} resultados adicionales en todos los chunks..."
+                        f"🔍 Buscando {remaining} resultados adicionales en otros chunks..."
                     )
 
-                    # Buscar en todos (sin filtro de calidad)
-                    all_results = self.collection.query(
+                    # Buscar en chunks NO relevantes
+                    # ✅ CORREGIR: Construir filtro para excluir relevantes
+                    if brand_filter:
+                        other_filter = {
+                            "$and": [
+                                {"brand": brand_filter.lower()},
+                                {"chunk_quality": {"$ne": "relevante"}}  # Not equal
+                            ]
+                        }
+                    else:
+                        other_filter = {"chunk_quality": {"$ne": "relevante"}}
+
+                    other_results = self.collection.query(
                         query_texts=[query],
-                        n_results=min(
-                            top_k * 3, 30
-                        ),  # Buscar más para filtrar duplicados
-                        where=base_filter if base_filter else None,
+                        n_results=remaining * 2,  # Buscar más para filtrar
+                        where=other_filter,
                         include=["documents", "metadatas", "distances"],
                     )
 
-                    # Agregar resultados no duplicados
-                    existing_ids = set()
-                    for result in processed_results:
-                        # Usar hash del texto para evitar duplicados
-                        existing_ids.add(hash(result["text"]))
+                    # Procesar y filtrar resultados adicionales
+                    existing_ids = {r["id"] for r in processed_results}
 
-                    if all_results["documents"] and all_results["documents"][0]:
-                        for i in range(len(all_results["documents"][0])):
-                            if len(processed_results) >= top_k:
-                                break
-
-                            text = all_results["documents"][0][i]
-                            text_hash = hash(text)
-
-                            # Evitar duplicados
-                            if text_hash not in existing_ids:
-                                metadata = all_results["metadatas"][0][i]
-                                quality = metadata.get(
-                                    "chunk_quality", "sin_clasificar"
+                    if other_results["ids"][0]:
+                        for i, doc_id in enumerate(other_results["ids"][0]):
+                            if doc_id not in existing_ids:
+                                quality = other_results["metadatas"][0][i].get(
+                                    "chunk_quality", "unknown"
                                 )
 
-                                # Marcar prioridad según calidad
-                                if quality == "relevante":
-                                    priority = "🎯 RELEVANTE"
-                                elif quality == "ambiguo":
-                                    priority = "🟡 AMBIGUO"
-                                elif quality == "irrelevante":
-                                    priority = "🔴 IRRELEVANTE"
-                                else:
-                                    priority = "⚪ SIN_CLASIFICAR"
+                                distance = other_results["distances"][0][i]
+                                similarity = 1 / (1 + distance)
 
-                                result = {
-                                    "text": text,
-                                    "metadata": metadata,
-                                    "distance": all_results["distances"][0][i],
-                                    "similarity_score": 1
-                                    - all_results["distances"][0][i],
-                                    "ranking": len(processed_results) + 1,
-                                    "priority": priority,
-                                }
-                                processed_results.append(result)
-                                existing_ids.add(text_hash)
+                                processed_results.append({
+                                    "id": doc_id,
+                                    "text": other_results["documents"][0][i],
+                                    "metadata": other_results["metadatas"][0][i],
+                                    "distance": distance,
+                                    "similarity": similarity,
+                                    "priority": quality,
+                                })
+
+                                if len(processed_results) >= top_k:
+                                    break
 
             else:
-                # Búsqueda normal sin priorización
-                logger.info("🔍 Buscando en todos los chunks...")
-                results = self.collection.query(
+                # Búsqueda sin priorización
+                # ✅ CORREGIR: Usar filtro simple cuando solo hay brand
+                where_filter = {"brand": brand_filter.lower()} if brand_filter else None
+
+                all_results = self.collection.query(
                     query_texts=[query],
                     n_results=top_k,
-                    where=base_filter if base_filter else None,
+                    where=where_filter,
                     include=["documents", "metadatas", "distances"],
                 )
 
-                if results["documents"] and results["documents"][0]:
-                    for i in range(len(results["documents"][0])):
-                        metadata = results["metadatas"][0][i]
-                        quality = metadata.get("chunk_quality", "sin_clasificar")
+                if all_results["ids"][0]:
+                    for i, doc_id in enumerate(all_results["ids"][0]):
+                        distance = all_results["distances"][0][i]
+                        similarity = 1 / (1 + distance)
 
-                        if quality == "relevante":
-                            priority = "🎯 RELEVANTE"
-                        elif quality == "ambiguo":
-                            priority = "🟡 AMBIGUO"
-                        elif quality == "irrelevante":
-                            priority = "🔴 IRRELEVANTE"
-                        else:
-                            priority = "⚪ SIN_CLASIFICAR"
+                        processed_results.append({
+                            "id": doc_id,
+                            "text": all_results["documents"][0][i],
+                            "metadata": all_results["metadatas"][0][i],
+                            "distance": distance,
+                            "similarity": similarity,
+                            "priority": all_results["metadatas"][0][i].get(
+                                "chunk_quality", "unknown"
+                            ),
+                        })
 
-                        result = {
-                            "text": results["documents"][0][i],
-                            "metadata": metadata,
-                            "distance": results["distances"][0][i],
-                            "similarity_score": 1 - results["distances"][0][i],
-                            "ranking": i + 1,
-                            "priority": priority,
-                        }
-                        processed_results.append(result)
+            # Limitar al top_k solicitado
+            processed_results = processed_results[:top_k]
 
             search_time = time.time() - start_time
 
-            # Limitar a top_k resultados finales
-            final_results = processed_results[:top_k]
-
-            # Actualizar rankings finales
-            for i, result in enumerate(final_results):
-                result["ranking"] = i + 1
-
+            # Log de resultados
             logger.info(
-                f"✅ Búsqueda completada en {search_time:.3f}s: {len(final_results)} resultados"
+                f"✅ Búsqueda completada en {search_time:.3f}s: {len(processed_results)} resultados"
             )
 
-            # Log de distribución de calidad
-            quality_count = {}
-            for result in final_results:
+            # Estadísticas de calidad
+            quality_counts = {}
+            for result in processed_results:
                 priority = result["priority"]
-                quality_count[priority] = quality_count.get(priority, 0) + 1
+                quality_counts[priority] = quality_counts.get(priority, 0) + 1
 
-            if quality_count:
-                logger.info("📊 Distribución de resultados por calidad:")
-                for priority, count in quality_count.items():
-                    logger.info(f"   {priority}: {count} resultados")
+            logger.info("📊 Distribución de resultados por calidad:")
+            for quality, count in sorted(quality_counts.items()):
+                logger.info(f"   🎯 {quality.upper()}: {count} resultados")
 
-            return final_results
+            return processed_results
 
         except Exception as e:
             logger.error(f"❌ Error en búsqueda: {e}")
-            return []
+            raise
 
     def get_collection_stats(self) -> Dict[str, Any]:
         """Obtiene estadísticas de la colección"""
