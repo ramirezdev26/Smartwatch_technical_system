@@ -110,3 +110,21 @@ CLUSTER_MODEL_PATH = PROJECT_ROOT / "models" / "cluster_model.joblib"
 # Visualización
 VISUALIZATION_PERPLEXITY = 30  # Para t-SNE
 VISUALIZATION_N_COMPONENTS = 2  # 2D o 3D
+
+# Añade al final de config.py:
+
+# ========================================
+# CONFIGURACIÓN VISUALIZACIÓN (FASE 3)
+# ========================================
+
+# PCA
+PCA_N_COMPONENTS = 2  # 2D o 3D
+
+# t-SNE
+TSNE_PERPLEXITY = 30  # Entre 5 y 50
+TSNE_MAX_ITER = 1000  # ✅ CORREGIDO: era TSNE_N_ITER
+TSNE_N_COMPONENTS = 2  # 2D o 3D
+
+# Cache de visualizaciones
+VISUALIZATION_CACHE_DIR = PROJECT_ROOT / "models" / "visualization_cache"
+VISUALIZATION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
