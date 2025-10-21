@@ -15,11 +15,11 @@ from loguru import logger
 
 def test_clustering():
     """Prueba básica del clustering"""
-    logger.info("🧪 PRUEBA DE CLUSTERING")
+    logger.info("PRUEBA DE CLUSTERING")
     logger.info("=" * 60)
 
     # 1. Obtener datos de ChromaDB
-    logger.info("\n📡 Obteniendo embeddings de ChromaDB...")
+    logger.info("\nObteniendo embeddings de ChromaDB...")
     chroma = ChromaManager()
     all_data = chroma.collection.get(include=["embeddings", "metadatas"])
 
@@ -29,7 +29,7 @@ def test_clustering():
     logger.info(f"✅ {len(embeddings)} embeddings obtenidos")
 
     # 2. Crear y entrenar cluster manager
-    logger.info("\n🎯 Entrenando clustering...")
+    logger.info("Entrenando clustering...")
     cluster_manager = ClusterManager()
 
     # Entrenar (busca K óptimo automáticamente)
@@ -39,7 +39,7 @@ def test_clustering():
     cluster_manager.save()
 
     # 4. Obtener resumen
-    logger.info("\n📊 RESUMEN:")
+    logger.info("RESUMEN:")
     summary = cluster_manager.get_summary()
 
     logger.info(f"   Clusters: {summary['n_clusters']}")
@@ -47,7 +47,7 @@ def test_clustering():
 
     for cluster in summary["clusters"]:
         logger.info(
-            f"\n   📂 Cluster {cluster['cluster_id']}: {cluster['size']} docs ({cluster['percentage']:.1f}%)"
+            f"\n   Cluster {cluster['cluster_id']}: {cluster['size']} docs ({cluster['percentage']:.1f}%)"
         )
         logger.info(f"      Marca: {cluster['top_brand']}")
         logger.info(
@@ -55,12 +55,12 @@ def test_clustering():
         )
 
     # 5. Probar predicción
-    logger.info("\n🔮 Probando predicción...")
+    logger.info("Probando predicción...")
     test_embedding = embeddings[0]
     predicted_cluster = cluster_manager.predict(test_embedding)
     logger.info(f"   Cluster predicho: {predicted_cluster}")
 
-    logger.info("\n✅ PRUEBA COMPLETADA")
+    logger.info("PRUEBA COMPLETADA")
 
 
 if __name__ == "__main__":

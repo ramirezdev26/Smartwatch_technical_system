@@ -74,11 +74,6 @@ ANOMALY_CONTAMINATION = 0.1  # Porcentaje esperado de anomalías
 DEFAULT_SEARCH_RESULTS = 5  # Número default de resultados
 MAX_SEARCH_RESULTS = 20  # Máximo permitido
 
-# ========================================
-# CREAR DIRECTORIOS
-# ========================================
-
-# Crear directorios si no existen
 for directory in [DATA_DIR, RAW_DATA_DIR, PROCESSED_DATA_DIR, EMBEDDINGS_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
 
@@ -89,41 +84,25 @@ NEW_DATA_DIR.mkdir(exist_ok=True)
 for brand in SUPPORTED_BRANDS:
     (NEW_DATA_DIR / brand).mkdir(exist_ok=True)
 
-# Crear directorio de logs
 LOG_FILE.parent.mkdir(exist_ok=True)
 
-# Al final del archivo config.py existente, añade:
 
-# ========================================
-# CONFIGURACIÓN CLUSTERING (FASE 3)
-# ========================================
+MIN_CLUSTERS = 2
+MAX_CLUSTERS = 15
+DEFAULT_N_CLUSTERS = 5
+CLUSTERING_METHOD = "silhouette"
 
-# K-Means clustering
-MIN_CLUSTERS = 2  # Mínimo número de clusters
-MAX_CLUSTERS = 15  # Máximo número de clusters para búsqueda
-DEFAULT_N_CLUSTERS = 5  # Default si no se especifica
-CLUSTERING_METHOD = "silhouette"  # 'elbow' o 'silhouette'
-
-# Modelo de clustering
 CLUSTER_MODEL_PATH = PROJECT_ROOT / "models" / "cluster_model.joblib"
 
-# Visualización
-VISUALIZATION_PERPLEXITY = 30  # Para t-SNE
-VISUALIZATION_N_COMPONENTS = 2  # 2D o 3D
+VISUALIZATION_PERPLEXITY = 30
+VISUALIZATION_N_COMPONENTS = 2
 
-# Añade al final de config.py:
 
-# ========================================
-# CONFIGURACIÓN VISUALIZACIÓN (FASE 3)
-# ========================================
+PCA_N_COMPONENTS = 2
 
-# PCA
-PCA_N_COMPONENTS = 2  # 2D o 3D
-
-# t-SNE
-TSNE_PERPLEXITY = 30  # Entre 5 y 50
-TSNE_MAX_ITER = 1000  # ✅ CORREGIDO: era TSNE_N_ITER
-TSNE_N_COMPONENTS = 2  # 2D o 3D
+TSNE_PERPLEXITY = 30
+TSNE_MAX_ITER = 1000
+TSNE_N_COMPONENTS = 2
 
 # Cache de visualizaciones
 VISUALIZATION_CACHE_DIR = PROJECT_ROOT / "models" / "visualization_cache"

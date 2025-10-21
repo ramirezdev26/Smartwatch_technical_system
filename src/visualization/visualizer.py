@@ -45,7 +45,7 @@ class EmbeddingVisualizer:
         Returns:
             Embeddings reducidos (n_samples, n_components)
         """
-        logger.info(f"📐 Aplicando PCA para reducir a {n_components}D")
+        logger.info(f"Aplicando PCA para reducir a {n_components}D")
 
         self.pca_model = PCA(n_components=n_components, random_state=42)
         self.pca_embeddings = self.pca_model.fit_transform(embeddings)
@@ -55,7 +55,7 @@ class EmbeddingVisualizer:
         explained_var = self.pca_model.explained_variance_ratio_
         total_var = explained_var.sum()
 
-        logger.info(f"✅ PCA completado:")
+        logger.info(f"PCA completado:")
         logger.info(f"   Varianza explicada: {total_var:.1%}")
         for i, var in enumerate(explained_var):
             logger.info(f"   PC{i+1}: {var:.1%}")
@@ -82,19 +82,19 @@ class EmbeddingVisualizer:
             Embeddings reducidos con t-SNE
         """
         logger.info(
-            f"🎨 Aplicando t-SNE para reducir a {n_components}D (perplexity={perplexity})"
+            f"Aplicando t-SNE para reducir a {n_components}D (perplexity={perplexity})"
         )
 
         # t-SNE puede ser lento, avisar al usuario
         if len(embeddings) > 1000:
             logger.warning(
-                f"⚠️  t-SNE con {len(embeddings)} puntos puede tardar varios minutos"
+                f"⚠t-SNE con {len(embeddings)} puntos puede tardar varios minutos"
             )
 
         tsne_model = TSNE(
             n_components=n_components,
             perplexity=perplexity,
-            max_iter=max_iter,  # ✅ CORREGIDO: era n_iter
+            max_iter=max_iter,
             random_state=42,
             verbose=0,
         )
@@ -102,7 +102,7 @@ class EmbeddingVisualizer:
         self.tsne_embeddings = tsne_model.fit_transform(embeddings)
         self.original_embeddings = embeddings
 
-        logger.info(f"✅ t-SNE completado")
+        logger.info(f"t-SNE completado")
 
         return self.tsne_embeddings
 
@@ -125,7 +125,7 @@ class EmbeddingVisualizer:
         Returns:
             Dict con 'pca' y 'tsne' embeddings
         """
-        logger.info(f"🎯 Aplicando PCA y t-SNE")
+        logger.info(f"Aplicando PCA y t-SNE")
         logger.info("=" * 60)
 
         self.metadata = metadata
@@ -192,7 +192,7 @@ class EmbeddingVisualizer:
         }
 
         joblib.dump(cache_data, cache_file)
-        logger.info(f"💾 Visualización cacheada: {cache_file}")
+        logger.info(f"Visualización cacheada: {cache_file}")
 
     def load_cache(self, name: str = "visualization"):
         """
@@ -213,7 +213,7 @@ class EmbeddingVisualizer:
         self.tsne_embeddings = cache_data["tsne_embeddings"]
         self.metadata = cache_data["metadata"]
 
-        logger.info(f"📂 Visualización cargada desde cache")
+        logger.info(f"Visualización cargada desde cache")
 
     def get_pca_info(self) -> Dict[str, Any]:
         """

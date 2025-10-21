@@ -18,7 +18,6 @@ from src.clustering.cluster_manager import ClusterManager
 from src.visualization.visualizer import EmbeddingVisualizer
 from config import *
 
-# Configuración de página
 st.set_page_config(
     page_title="Smartwatch Knowledge System",
     page_icon="⌚",
@@ -30,20 +29,17 @@ st.set_page_config(
 def load_system():
     """Carga todos los componentes del sistema (se cachea)"""
     try:
-        # ChromaDB
         chroma = ChromaManager()
 
-        # Cargar datos
         all_data = chroma.collection.get(include=["embeddings", "metadatas"])
         embeddings = np.array(all_data["embeddings"])
         metadata = all_data["metadatas"]
 
-        # Clustering
         cluster_manager = ClusterManager()
         try:
             cluster_manager.load()
         except FileNotFoundError:
-            st.warning("⚠️ No hay modelo de clustering. Entrenando...")
+            st.warning("No hay modelo de clustering. Entrenando...")
             cluster_manager.fit(embeddings, metadata)
             cluster_manager.save()
 
@@ -52,7 +48,7 @@ def load_system():
         try:
             visualizer.load_cache()
         except FileNotFoundError:
-            st.warning("⚠️ No hay visualización cacheada. Calculando...")
+            st.warning("No hay visualización cacheada. Calculando...")
             visualizer.fit_both(embeddings, metadata)
             visualizer.save_cache()
 
@@ -64,7 +60,7 @@ def load_system():
             "metadata": metadata,
         }
     except Exception as e:
-        st.error(f"❌ Error cargando sistema: {e}")
+        st.error(f"Error cargando sistema: {e}")
         return None
 
 
@@ -95,11 +91,11 @@ def main():
     """Función principal de la app"""
 
     # Título
-    st.title("⌚ Sistema de Gestión de Conocimiento - Smartwatches")
+    st.title("Sistema de Gestión de Conocimiento - Smartwatches")
     st.markdown("---")
 
     # Cargar sistema
-    with st.spinner("🔄 Cargando sistema..."):
+    with st.spinner("Cargando sistema..."):
         system = load_system()
 
     if system is None:
@@ -112,7 +108,7 @@ def main():
     metadata = system["metadata"]
 
     # Tabs principales
-    tab1, tab2 = st.tabs(["🔍 Búsqueda Semántica", "📊 Visualización de Clusters"])
+    tab1, tab2 = st.tabs(["Búsqueda Semántica", "📊 Visualización de Clusters"])
 
     # ==========================================
     # TAB 1: BÚSQUEDA SEMÁNTICA
@@ -137,7 +133,7 @@ def main():
             )
 
         # Botón de búsqueda
-        if st.button("🔍 Buscar", type="primary") and query:
+        if st.button("Buscar", type="primary") and query:
             with st.spinner("Buscando..."):
                 # Realizar búsqueda
                 brand = None if brand_filter == "Todas" else brand_filter
@@ -150,11 +146,11 @@ def main():
 
                 # Mostrar resultados
                 if results:
-                    st.success(f"✅ Encontrados {len(results)} resultados")
+                    st.success(f"Encontrados {len(results)} resultados")
 
                     for i, result in enumerate(results, 1):
                         with st.expander(
-                                f"📄 Resultado {i} - {result['metadata']['brand'].upper()} (Score: {result['similarity']:.3f})"
+                                f"Resultado {i} - {result['metadata']['brand'].upper()} (Score: {result['similarity']:.3f})"
                         ):
                             # Metadata
                             col_a, col_b, col_c = st.columns(3)
@@ -176,7 +172,7 @@ def main():
                             st.info(result["text"])
 
                 else:
-                    st.warning("⚠️ No se encontraron resultados")
+                    st.warning("No se encontraron resultados")
 
     # ==========================================
     # TAB 2: VISUALIZACIÓN
@@ -224,7 +220,7 @@ def main():
         st.plotly_chart(fig, use_container_width=True)
 
         # Información adicional
-        with st.expander("ℹ️ Información del Sistema"):
+        with st.expander("Información del Sistema"):
             col_a, col_b, col_c = st.columns(3)
 
             with col_a:
