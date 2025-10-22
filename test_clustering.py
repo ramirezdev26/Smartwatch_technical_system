@@ -50,9 +50,7 @@ def test_clustering():
             f"\n   Cluster {cluster['cluster_id']}: {cluster['size']} docs ({cluster['percentage']:.1f}%)"
         )
         logger.info(f"      Marca: {cluster['top_brand']}")
-        logger.info(
-            f"      Relevantes: {cluster['quality_distribution']['relevante']}"
-        )
+        logger.info(f"      Relevantes: {cluster['quality_distribution']['relevante']}")
 
     # 5. Probar predicción
     logger.info("Probando predicción...")

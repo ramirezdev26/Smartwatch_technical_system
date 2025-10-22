@@ -420,9 +420,7 @@ def enhanced_chroma_pipeline():
     logger.info(f"Tiempo total: {total_time:.1f} segundos")
     logger.info(f"Documentos de entrenamiento: {len(training_docs)}")
     logger.info(f"Documentos nuevos: {len(new_docs) if new_docs else 0}")
-    logger.info(
-        f"Clasificador: {'✅ Entrenado' if classifier else '❌ No disponible'}"
-    )
+    logger.info(f"Clasificador: {'✅ Entrenado' if classifier else '❌ No disponible'}")
     logger.info(f"Total en ChromaDB: {final_stats.get('total_documents', 0)} chunks")
     logger.info(f"Chunks de entrenamiento: {storage_result['chunks_stored']}")
     logger.info(f"Chunks nuevos: {storage_result_new['chunks_stored']}")
@@ -441,13 +439,9 @@ def enhanced_chroma_pipeline():
         logger.info(f"✅ Chunks relevantes encontrados en ChromaDB: {relevant_found}")
 
         if relevant_found > 0:
-            logger.info(
-                "¡Sistema listo! Las búsquedas priorizarán chunks relevantes."
-            )
+            logger.info("¡Sistema listo! Las búsquedas priorizarán chunks relevantes.")
         else:
-            logger.warning(
-                "No se encontraron chunks relevantes. Verificar etiquetado."
-            )
+            logger.warning("No se encontraron chunks relevantes. Verificar etiquetado.")
 
     except Exception as e:
         logger.warning(f"Error verificando chunks relevantes: {e}")

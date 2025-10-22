@@ -32,9 +32,7 @@ class EmbeddingVisualizer:
         self.original_embeddings = None
         self.metadata = None
 
-    def fit_pca(
-        self, embeddings: np.ndarray, n_components: int = 2
-    ) -> np.ndarray:
+    def fit_pca(self, embeddings: np.ndarray, n_components: int = 2) -> np.ndarray:
         """
         Reduce dimensionalidad con PCA
 
@@ -166,12 +164,8 @@ class EmbeddingVisualizer:
 
         # Extraer información útil de metadata
         data["brands"] = [m.get("brand", "unknown") for m in self.metadata]
-        data["quality"] = [
-            m.get("chunk_quality", "unknown") for m in self.metadata
-        ]
-        data["doc_names"] = [
-            m.get("document_name", "unknown") for m in self.metadata
-        ]
+        data["quality"] = [m.get("chunk_quality", "unknown") for m in self.metadata]
+        data["doc_names"] = [m.get("document_name", "unknown") for m in self.metadata]
 
         return data
 

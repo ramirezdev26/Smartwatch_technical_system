@@ -150,7 +150,7 @@ def main():
 
                     for i, result in enumerate(results, 1):
                         with st.expander(
-                                f"Resultado {i} - {result['metadata']['brand'].upper()} (Score: {result['similarity']:.3f})"
+                            f"Resultado {i} - {result['metadata']['brand'].upper()} (Score: {result['similarity']:.3f})"
                         ):
                             # Metadata
                             col_a, col_b, col_c = st.columns(3)
@@ -230,7 +230,7 @@ def main():
             with col_c:
                 summary = cluster_manager.get_summary()
                 # ✅ MANEJAR CASO DONDE SILHOUETTE ES NONE
-                if summary['silhouette_score'] is not None:
+                if summary["silhouette_score"] is not None:
                     st.metric("Silhouette Score", f"{summary['silhouette_score']:.3f}")
                 else:
                     st.metric("Silhouette Score", "N/A")

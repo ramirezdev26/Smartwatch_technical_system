@@ -34,9 +34,9 @@ class ClusterManager:
         self.model_save_path.parent.mkdir(parents=True, exist_ok=True)
 
     def find_optimal_k(
-            self,
-            embeddings: np.ndarray,
-            k_range: Tuple[int, int] = (2, 10),
+        self,
+        embeddings: np.ndarray,
+        k_range: Tuple[int, int] = (2, 10),
     ) -> Dict[str, Any]:
         """
         Encuentra el número óptimo de clusters usando silhouette score
@@ -76,10 +76,10 @@ class ClusterManager:
         }
 
     def fit(
-            self,
-            embeddings: np.ndarray,
-            metadata: List[Dict[str, Any]],
-            n_clusters: Optional[int] = None,
+        self,
+        embeddings: np.ndarray,
+        metadata: List[Dict[str, Any]],
+        n_clusters: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Entrena K-Means sobre los embeddings
@@ -206,7 +206,7 @@ class ClusterManager:
         return int(self.kmeans_model.predict(embedding)[0])
 
     def get_cluster_documents(
-            self, cluster_id: int, max_docs: Optional[int] = None
+        self, cluster_id: int, max_docs: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Obtiene metadatos de documentos en un cluster
@@ -280,7 +280,9 @@ class ClusterManager:
         else:
             # Si no hay embeddings, usar un valor por defecto o None
             silhouette = None
-            logger.warning("⚠️ No hay embeddings cargados, silhouette score no disponible")
+            logger.warning(
+                "⚠️ No hay embeddings cargados, silhouette score no disponible"
+            )
 
         return {
             "status": "trained",

@@ -223,11 +223,11 @@ class ChromaManager:
         return chunk_id
 
     def search(
-            self,
-            query: str,
-            top_k: int = 5,
-            brand_filter: str = None,
-            prioritize_relevant: bool = True,
+        self,
+        query: str,
+        top_k: int = 5,
+        brand_filter: str = None,
+        prioritize_relevant: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Realiza búsqueda semántica en Chroma con priorización de chunks relevantes
@@ -261,7 +261,7 @@ class ChromaManager:
                     relevant_filter = {
                         "$and": [
                             {"brand": brand_filter.lower()},
-                            {"chunk_quality": "relevante"}
+                            {"chunk_quality": "relevante"},
                         ]
                     }
                 else:
@@ -280,14 +280,16 @@ class ChromaManager:
                         distance = relevant_results["distances"][0][i]
                         similarity = 1 / (1 + distance)
 
-                        processed_results.append({
-                            "id": doc_id,
-                            "text": relevant_results["documents"][0][i],
-                            "metadata": relevant_results["metadatas"][0][i],
-                            "distance": distance,
-                            "similarity": similarity,
-                            "priority": "relevante",
-                        })
+                        processed_results.append(
+                            {
+                                "id": doc_id,
+                                "text": relevant_results["documents"][0][i],
+                                "metadata": relevant_results["metadatas"][0][i],
+                                "distance": distance,
+                                "similarity": similarity,
+                                "priority": "relevante",
+                            }
+                        )
 
                 # PASO 2: Si no hay suficientes relevantes, buscar en otros
                 if len(processed_results) < top_k:
@@ -302,7 +304,7 @@ class ChromaManager:
                         other_filter = {
                             "$and": [
                                 {"brand": brand_filter.lower()},
-                                {"chunk_quality": {"$ne": "relevante"}}  # Not equal
+                                {"chunk_quality": {"$ne": "relevante"}},  # Not equal
                             ]
                         }
                     else:
@@ -328,14 +330,16 @@ class ChromaManager:
                                 distance = other_results["distances"][0][i]
                                 similarity = 1 / (1 + distance)
 
-                                processed_results.append({
-                                    "id": doc_id,
-                                    "text": other_results["documents"][0][i],
-                                    "metadata": other_results["metadatas"][0][i],
-                                    "distance": distance,
-                                    "similarity": similarity,
-                                    "priority": quality,
-                                })
+                                processed_results.append(
+                                    {
+                                        "id": doc_id,
+                                        "text": other_results["documents"][0][i],
+                                        "metadata": other_results["metadatas"][0][i],
+                                        "distance": distance,
+                                        "similarity": similarity,
+                                        "priority": quality,
+                                    }
+                                )
 
                                 if len(processed_results) >= top_k:
                                     break
@@ -357,16 +361,18 @@ class ChromaManager:
                         distance = all_results["distances"][0][i]
                         similarity = 1 / (1 + distance)
 
-                        processed_results.append({
-                            "id": doc_id,
-                            "text": all_results["documents"][0][i],
-                            "metadata": all_results["metadatas"][0][i],
-                            "distance": distance,
-                            "similarity": similarity,
-                            "priority": all_results["metadatas"][0][i].get(
-                                "chunk_quality", "unknown"
-                            ),
-                        })
+                        processed_results.append(
+                            {
+                                "id": doc_id,
+                                "text": all_results["documents"][0][i],
+                                "metadata": all_results["metadatas"][0][i],
+                                "distance": distance,
+                                "similarity": similarity,
+                                "priority": all_results["metadatas"][0][i].get(
+                                    "chunk_quality", "unknown"
+                                ),
+                            }
+                        )
 
             # Limitar al top_k solicitado
             processed_results = processed_results[:top_k]
